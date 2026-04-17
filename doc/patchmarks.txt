@@ -1,0 +1,164 @@
+*patchmarks.txt*  File-oriented Git review annotations for Neovim
+
+==============================================================================
+CONTENTS                                                      *patchmarks*
+
+1. Introduction ......................................... |patchmarks-intro|
+2. Setup ................................................. |patchmarks-setup|
+3. Commands ........................................... |patchmarks-cmds|
+4. Keymaps ........................................... |patchmarks-maps|
+5. Workflow ........................................ |patchmarks-workflow|
+6. Configuration ................................... |patchmarks-config|
+7. Notes ............................................. |patchmarks-notes|
+
+==============================================================================
+1. Introduction                                             *patchmarks-intro*
+
+Patchmarks is a file-oriented Git review plugin.
+
+It opens the current changed-file set into normal source buffers, populates
+the built-in quickfix list, and lets you attach freeform annotations to lines
+or line ranges. Those annotations can then be exported back to an LLM coding
+agent.
+
+Patchmarks does not render diffs itself.
+
+==============================================================================
+2. Setup                                                     *patchmarks-setup*
+
+Example with lazy.nvim: >
+  {
+    "emmanuelchucks/patchmarks.nvim",
+    config = function()
+      require("patchmarks").setup({
+        preview = {
+          trigger = "manual",
+        },
+      })
+    end,
+  }
+<
+Requirements:
+
+- Neovim >= 0.10
+- Git on $PATH
+- MIT licensed, see LICENSE
+
+==============================================================================
+3. Commands                                                 *patchmarks-cmds*
+
+                                                        *:PatchmarksOpen*
+:PatchmarksOpen
+  Open the current review session, or create one from the current Git state.
+
+                                                     *:PatchmarksRefresh*
+:PatchmarksRefresh
+  Refresh changed-file metadata without discarding annotations.
+
+                                                         *:PatchmarksNew*
+:PatchmarksNew
+  Start a fresh round and discard existing annotations.
+
+                                                      *:PatchmarksExport*
+:PatchmarksExport
+  Export annotations to registers and clipboard when available.
+
+                                                       *:PatchmarksClose*
+:PatchmarksClose
+  Close Patchmarks UI state but keep the session persisted.
+
+                                                     *:PatchmarksDiscard*
+:PatchmarksDiscard
+  Delete the persisted session and clear in-memory state.
+
+==============================================================================
+4. Keymaps                                                  *patchmarks-maps*
+
+These mappings are buffer-local to Patchmarks review buffers.
+
+`<localleader>a`
+  Add an annotation on the current line or on the current visual line range.
+
+`<localleader>e`
+  Edit the annotation under the cursor.
+
+`<localleader>d`
+  Delete the annotation under the cursor.
+
+`<localleader>p`
+  Preview the annotation under the cursor.
+
+`<localleader>x`
+  Export the current review.
+
+`<localleader>r`
+  Refresh the session.
+
+`<localleader>R`
+  Start a new round.
+
+`[a`
+  Jump to the previous annotation in the current file.
+
+`]a`
+  Jump to the next annotation in the current file.
+
+==============================================================================
+5. Workflow                                              *patchmarks-workflow*
+
+1. Run |:PatchmarksOpen| inside a Git worktree.
+2. Use quickfix to move between changed files.
+3. Add annotations with `<localleader>a`.
+4. Preview or edit them as needed.
+5. Run |:PatchmarksExport| to copy a compact review block.
+6. Run |:PatchmarksNew| when you want a fresh round.
+
+==============================================================================
+6. Configuration                                          *patchmarks-config*
+
+Patchmarks exposes a small setup surface: >
+  require("patchmarks").setup({
+    preview = {
+      trigger = "manual", -- "manual" | "cursorhold"
+      width = 72,
+      height = 6,
+    },
+  })
+<
+Defaults:
+
+- `preview.trigger = "manual"`
+- `preview.width = 72`
+- `preview.height = 6`
+
+==============================================================================
+7. Notes                                                    *patchmarks-notes*
+
+Session state is persisted under: >
+  .git/patchmarks/current.json
+<
+Supported in v1:
+
+- modified, added, renamed, copied, and untracked files
+- single-line and line-range annotations
+
+Not supported in v1:
+
+- deleted tracked files
+- overlapping annotations
+- automatic carry-forward across rounds
+- agent-specific integration
+
+Annotation editor behavior:
+
+- `:w` saves and keeps the editor open
+- `:wq` and `ZZ` save and close
+- `:q!` and `ZQ` discard
+
+Empty-body behavior:
+
+- new annotation: empty save/quit is a no-op
+- existing annotation: empty `:q` keeps the original annotation
+- existing annotation: empty `:w` or `:wq` asks whether to delete it
+
+vim:tw=78:ts=8:noet:ft=help:norl:
