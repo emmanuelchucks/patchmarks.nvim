@@ -53,7 +53,7 @@ Requirements:
 
                                                      *:PatchmarksRefresh*
 :PatchmarksRefresh
-  Refresh changed-file metadata without discarding annotations.
+  Explicitly refresh changed-file metadata without discarding annotations.
 
                                                          *:PatchmarksNew*
 :PatchmarksNew
@@ -111,7 +111,9 @@ These mappings are buffer-local to Patchmarks review buffers.
 3. Add annotations with `<localleader>a`.
 4. Preview or edit them as needed.
 5. Run |:PatchmarksExport| to copy a compact review block.
-6. Run |:PatchmarksNew| when you want a fresh round.
+6. If the last review was exported and Git has changed, |:PatchmarksOpen|
+   starts a fresh round automatically.
+7. Run |:PatchmarksNew| when you want to force a fresh round.
 
 ==============================================================================
 6. Configuration                                          *patchmarks-config*
@@ -137,6 +139,9 @@ Defaults:
 Session state is persisted under: >
   .git/patchmarks/current.json
 <
+If the session was already exported and Git has changed since that export,
+|:PatchmarksOpen| starts a fresh round instead of restoring old annotations.
+
 Supported in v1:
 
 - modified, added, renamed, copied, and untracked files

@@ -132,6 +132,32 @@ function M.close(session)
   return true
 end
 
+local function current_quickfix_path()
+  local index = vim.fn.getqflist({ idx = 0 }).idx or 0
+  if index <= 0 then
+    return nil
+  end
+
+  local items = vim.fn.getqflist()
+  local item = items[index]
+  if item == nil then
+    return nil
+  end
+
+  if item.bufnr ~= nil and item.bufnr > 0 and vim.api.nvim_buf_is_valid(item.bufnr) then
+    local path = vim.api.nvim_buf_get_name(item.bufnr)
+    if path ~= "" then
+      return vim.uv.fs_realpath(path) or vim.fs.normalize(path)
+    end
+  end
+
+  if item.filename ~= nil and item.filename ~= "" then
+    return vim.uv.fs_realpath(item.filename) or vim.fs.normalize(item.filename)
+  end
+
+  return nil
+end
+
 function M.refresh_quickfix(session, preferred_path)
   if #session.files == 0 then
     notification("no changed files")
@@ -140,6 +166,15 @@ function M.refresh_quickfix(session, preferred_path)
 
   local items = {}
   session.paths = {}
+  preferred_path = preferred_path
+    or (function()
+      local current_path = vim.api.nvim_buf_get_name(0)
+      if current_path ~= "" then
+        return vim.uv.fs_realpath(current_path) or vim.fs.normalize(current_path)
+      end
+
+      return current_quickfix_path()
+    end)()
   local preferred_index = 1
 
   for index, file in ipairs(session.files) do

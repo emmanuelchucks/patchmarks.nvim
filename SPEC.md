@@ -87,13 +87,14 @@ During the session:
 - the user moves between files using normal quickfix motions and commands
 - the user uses Patchmarks mappings to annotate line ranges
 - the user may keep using their existing diff plugin to inspect or stage hunks
-- Patchmarks refreshes file metadata when Neovim regains focus or buffers/windows change
+- Patchmarks only refreshes when the user explicitly asks it to
 
 At export time:
 
 - Patchmarks produces a compact text block
 - it copies that block to Neovim registers and the system clipboard when available
 - it keeps the current session intact until the user explicitly starts a new round or discards it
+- if the review was exported and Git later changes, reopening Patchmarks starts a fresh round automatically
 
 ## Why File-Oriented Instead of Hunk-Oriented
 
@@ -168,6 +169,7 @@ v1 intentionally keeps configuration narrow.
 - Starting a new round with `:PatchmarksNew` discards old annotations entirely.
 - Exporting does not clear the session automatically.
 - If Neovim crashes or closes, reopening with `:PatchmarksOpen` restores the session.
+- If the session was exported and Git has changed since that export, `:PatchmarksOpen` starts a fresh round instead of restoring old annotations.
 
 ## Change Discovery
 
@@ -263,10 +265,10 @@ Examples:
 
 Default order:
 
-1. annotated files first
-2. remaining files in Git status order
+1. Git status order
+2. files with stale annotations remain at the end
 
-This keeps active review work easy to revisit.
+The quickfix list should stay stable while the user is actively reviewing.
 
 ## Source Buffer Behavior
 
@@ -509,17 +511,10 @@ Avoid introducing utility wrappers unless they reduce real complexity.
 
 Patchmarks refresh is metadata-oriented, not destructive.
 
-### Automatic Refresh Triggers
-
-- `FocusGained`
-- `BufEnter`
-- `WinEnter`
-
 ### Refresh Policy
 
-- refresh is debounced
-- default debounce: `150ms`
-- refresh is skipped while the floating editor is open
+- refresh is explicit only
+- there is no automatic refresh on focus, buffer entry, or window entry
 
 ### What Refresh Updates
 
@@ -558,6 +553,20 @@ Starting a new round is explicit.
 - delete current session data
 - rebuild changed-file set from current Git state
 - create a brand-new annotation set
+
+## Post-Export Reopen Semantics
+
+Patchmarks treats export as the handoff boundary to the agent.
+
+If the current session was exported and Git later changes:
+
+- reopening with `:PatchmarksOpen` starts a fresh round automatically
+- old annotations from the exported round are not restored
+- Patchmarks shows a short notice explaining why a fresh round was started
+
+If the session was exported but Git is unchanged:
+
+- `:PatchmarksOpen` restores the existing session normally
 
 There is no automatic annotation carry-forward in v1.
 
@@ -706,7 +715,6 @@ Recommended Lua module split:
 - `patchmarks.render`
 - `patchmarks.float`
 - `patchmarks.export`
-- `patchmarks.autocmds`
 - `patchmarks.commands`
 - `patchmarks.keymaps`
 

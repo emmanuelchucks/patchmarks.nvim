@@ -24,14 +24,6 @@ local function is_absolute(path)
   return path:match("^/") ~= nil or path:match("^%a:[/\\]") ~= nil
 end
 
-local function status_priority(file)
-  if file.annotated then
-    return 0
-  end
-
-  return file.index
-end
-
 local function classify_xy(xy)
   if xy == "??" then
     return {
@@ -116,16 +108,11 @@ local function parse_status_z(output)
         kind = classification.kind,
         quickfix_status = classification.quickfix_status,
         index = #files + 1,
-        annotated = false,
       }
     end
 
     i = i + 1
   end
-
-  table.sort(files, function(a, b)
-    return status_priority(a) < status_priority(b)
-  end)
 
   return files
 end
@@ -145,6 +132,49 @@ local function parse_first_changed_line(diff_text)
   end
 
   return 1
+end
+
+local function read_file(path)
+  local fd = vim.uv.fs_open(path, "r", 438)
+  if fd == nil then
+    return ""
+  end
+
+  local stat = vim.uv.fs_fstat(fd)
+  local size = stat and stat.size or 0
+  local content = size > 0 and (vim.uv.fs_read(fd, size, 0) or "") or ""
+  vim.uv.fs_close(fd)
+  return content
+end
+
+local function diff_text(repo_root, path)
+  local result = git({ "diff", "--no-ext-diff", "--binary", "HEAD", "--", path }, {
+    cwd = repo_root,
+    allow_fail = true,
+  })
+
+  if result.code ~= 0 then
+    return ""
+  end
+
+  return result.stdout or ""
+end
+
+local function build_change_key(repo_root, files, status_output)
+  local parts = { status_output or "" }
+
+  for _, file in ipairs(files) do
+    parts[#parts + 1] = file.path
+    parts[#parts + 1] = file.kind or ""
+
+    if file.kind == "untracked" then
+      parts[#parts + 1] = read_file(vim.fs.joinpath(repo_root, file.path))
+    else
+      parts[#parts + 1] = diff_text(repo_root, file.path)
+    end
+  end
+
+  return vim.fn.sha256(table.concat(parts, "\0"))
 end
 
 function M.repo_root(cwd)
@@ -209,7 +239,10 @@ end
 
 function M.build_snapshot(repo_root)
   local repo_name = vim.fs.basename(repo_root)
-  local files = M.changed_files(repo_root)
+  local status = git({ "status", "--porcelain=v1", "-z", "--untracked-files=all" }, {
+    cwd = repo_root,
+  })
+  local files = parse_status_z(status.stdout or "")
 
   for _, file in ipairs(files) do
     file.first_changed_line = M.first_changed_line(repo_root, file)
@@ -221,6 +254,7 @@ function M.build_snapshot(repo_root)
     repo_name = repo_name,
     files = files,
     annotation_count = 0,
+    change_key = build_change_key(repo_root, files, status.stdout or ""),
   }
 end
 

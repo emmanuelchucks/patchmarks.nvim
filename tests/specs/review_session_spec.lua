@@ -3,6 +3,8 @@ return function()
   H.bootstrap()
 
   local T = H.new_harness("review_session_spec")
+  local annotations = require("patchmarks.annotations")
+  local editor = require("patchmarks.editor")
   local patchmarks = require("patchmarks")
   local session = require("patchmarks.session")
 
@@ -72,7 +74,36 @@ return function()
     T.expect(qf.title:match("%(4 files, 0 notes%)"), "refresh should update title counts")
   end
 
+  local function run_quickfix_order_stability_test()
+    local repo = setup_repo()
+    vim.cmd.cd(repo)
+
+    T.expect(patchmarks.open() == true, "PatchmarksOpen should succeed for quickfix order stability")
+    local before = vim.tbl_map(function(item)
+      return item.user_data.path
+    end, vim.fn.getqflist())
+
+    vim.cmd("cc 2")
+    local selected_before_idx = vim.fn.getqflist({ idx = 0 }).idx
+    T.expect_eq(selected_before_idx, 2, "test should move quickfix selection to the second item before annotating")
+    T.expect_eq(vim.fs.basename(vim.api.nvim_buf_get_name(0)), "tracked.txt", "test should annotate a non-first quickfix item")
+    annotations.add_current()
+    local state = editor.state
+    T.expect(state ~= nil, "editor should open for quickfix order stability")
+    vim.api.nvim_buf_set_lines(state.bufnr, 0, -1, false, { "Keep order stable." })
+    vim.cmd("wq")
+
+    local after_qf = vim.fn.getqflist()
+    local after = vim.tbl_map(function(item)
+      return item.user_data.path
+    end, after_qf)
+    T.expect_eq(table.concat(after, ","), table.concat(before, ","), "quickfix order should stay stable after annotation")
+    T.expect_eq(vim.fn.getqflist({ idx = 0 }).idx, 2, "quickfix focus should stay on the same item after annotation")
+    T.expect_eq(vim.fs.basename(vim.api.nvim_buf_get_name(0)), "tracked.txt", "current buffer should stay on the annotated file after annotation")
+  end
+
   run_open_flow_test()
   run_refresh_test()
+  run_quickfix_order_stability_test()
   T.finish()
 end

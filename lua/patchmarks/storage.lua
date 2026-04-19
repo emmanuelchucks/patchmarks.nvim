@@ -49,6 +49,8 @@ local function to_session(repo_root, data)
     repo_name = data.repo_name or vim.fs.basename(repo_root),
     created_at = data.created_at,
     exported_at = data.exported_at,
+    exported_change_key = data.exported_change_key,
+    change_key = data.change_key or "",
     next_annotation_seq = data.next_annotation_seq or 1,
     files = files,
   }
@@ -93,6 +95,8 @@ function M.save(session)
     repo_name = session.repo_name,
     created_at = session.created_at,
     exported_at = session.exported_at,
+    exported_change_key = session.exported_change_key,
+    change_key = session.change_key or "",
     next_annotation_seq = session.next_annotation_seq,
     files = files,
   })

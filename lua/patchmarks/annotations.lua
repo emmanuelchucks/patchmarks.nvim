@@ -99,9 +99,25 @@ local function open_preview_for_annotation(file, annotation)
 end
 
 local function refresh_views(current)
+  local preferred_path = nil
+  if editor.state ~= nil and vim.api.nvim_win_is_valid(editor.state.source_winid) then
+    local source_buf = vim.api.nvim_win_get_buf(editor.state.source_winid)
+    local source_path = vim.api.nvim_buf_get_name(source_buf)
+    if source_path ~= "" then
+      preferred_path = vim.uv.fs_realpath(source_path) or vim.fs.normalize(source_path)
+    end
+  end
+
   session.touch(current)
   storage.save(current)
-  require("patchmarks.review").refresh_quickfix(current)
+  if preferred_path == nil then
+    local current_path = vim.api.nvim_buf_get_name(0)
+    if current_path ~= "" then
+      preferred_path = vim.uv.fs_realpath(current_path) or vim.fs.normalize(current_path)
+    end
+  end
+
+  require("patchmarks.review").refresh_quickfix(current, preferred_path)
   render.render_buffer(0)
 end
 
