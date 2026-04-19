@@ -72,7 +72,7 @@ Defaults:
 - `:PatchmarksOpen`
   Open the current review session, or create one from the current Git state.
 - `:PatchmarksRefresh`
-  Refresh changed-file metadata without discarding annotations.
+  Explicitly refresh changed-file metadata without discarding annotations.
 - `:PatchmarksNew`
   Start a fresh round and discard existing annotations.
 - `:PatchmarksExport`
@@ -112,7 +112,8 @@ These mappings exist only in Patchmarks review buffers.
 3. Add annotations with `<localleader>a`.
 4. Edit or preview them as needed.
 5. Run `:PatchmarksExport` to copy a compact review block for your agent.
-6. Use `:PatchmarksNew` when you want to begin a fresh round.
+6. After the agent makes more Git changes, run `:PatchmarksOpen` to start a fresh round automatically if the last review was already exported.
+7. Use `:PatchmarksNew` when you want to force a fresh round yourself.
 
 ## Annotation Editor
 
@@ -140,6 +141,10 @@ Patchmarks persists the active session under the repo Git dir:
 ```
 
 This lets `:PatchmarksOpen` restore a session after restarting Neovim.
+
+If the session was already exported and Git has changed since that export,
+`PatchmarksOpen` starts a fresh round automatically instead of restoring the
+old annotations.
 
 ## Scope
 

@@ -109,12 +109,6 @@ function M.new_from_snapshot(snapshot, previous)
   end
 
   table.sort(files, function(a, b)
-    local a_annotated = #a.annotations > 0
-    local b_annotated = #b.annotations > 0
-    if a_annotated ~= b_annotated then
-      return a_annotated
-    end
-
     return (a.index or math.huge) < (b.index or math.huge)
   end)
 
@@ -124,6 +118,8 @@ function M.new_from_snapshot(snapshot, previous)
     repo_name = snapshot.repo_name,
     created_at = previous and previous.created_at or now_utc(),
     exported_at = previous and previous.exported_at or nil,
+    exported_change_key = previous and previous.exported_change_key or nil,
+    change_key = snapshot.change_key or "",
     next_annotation_seq = previous and previous.next_annotation_seq or 1,
     files = files,
   }

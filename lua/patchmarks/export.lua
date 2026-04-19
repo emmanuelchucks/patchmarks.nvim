@@ -66,6 +66,7 @@ function M.export_current()
   local text = M.build_text(current)
   M.write_registers(text)
   current.exported_at = os.date("!%Y-%m-%dT%H:%M:%SZ")
+  current.exported_change_key = current.change_key or ""
   storage.save(current)
   vim.notify("Patchmarks: exported review to registers", vim.log.levels.INFO)
   return text

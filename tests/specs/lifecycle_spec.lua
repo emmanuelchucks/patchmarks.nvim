@@ -5,6 +5,7 @@ return function()
   local T = H.new_harness("lifecycle_spec")
   local annotations = require("patchmarks.annotations")
   local editor = require("patchmarks.editor")
+  local exporter = require("patchmarks.export")
   local patchmarks = require("patchmarks")
   local session = require("patchmarks.session")
   local storage = require("patchmarks.storage")
@@ -73,22 +74,30 @@ return function()
     T.expect(vim.fn.filereadable(session_path) == 0, "discard should delete session file")
   end
 
-  local function run_autorefresh_test()
+  local function run_post_export_git_change_opens_fresh_test()
     local repo = setup_repo()
     vim.cmd.cd(repo)
 
-    T.expect(patchmarks.open() == true, "PatchmarksOpen should succeed for autorefresh")
-    vim.api.nvim_win_set_cursor(0, { 3, 0 })
-    H.write_file(vim.fs.joinpath(repo, "second.txt"), { "one", "two" })
+    T.expect(patchmarks.open() == true, "PatchmarksOpen should succeed for post-export fresh round test")
+    vim.api.nvim_win_set_cursor(0, { 2, 0 })
+    annotations.add_current()
+    save_editor("Export me.")
 
-    vim.api.nvim_exec_autocmds("FocusGained", {})
-    local refreshed = vim.wait(500, function()
-      local qf = vim.fn.getqflist({ size = 1 })
-      return qf.size == 2
-    end, 50)
+    T.expect(exporter.export_current() ~= nil, "export should succeed before fresh round test")
+    local current = session.get()
+    T.expect_eq(current.annotation_count, 1, "export setup should keep annotation before reopen")
 
-    T.expect(refreshed, "autorefresh should pick up new changed files")
-    T.expect_eq(vim.api.nvim_win_get_cursor(0)[1], 3, "autorefresh should preserve cursor position in current file")
+    T.expect(patchmarks.close() == true, "PatchmarksClose should succeed before reopen")
+    T.expect(patchmarks.open() == true, "PatchmarksOpen should restore exported session when Git is unchanged")
+    current = session.get()
+    T.expect_eq(current.annotation_count, 1, "unchanged Git after export should restore existing session")
+
+    T.expect(patchmarks.close() == true, "PatchmarksClose should succeed before Git change")
+    H.write_file(vim.fs.joinpath(repo, "tracked.txt"), { "alpha", "BETA changed again", "gamma" })
+    T.expect(patchmarks.open() == true, "PatchmarksOpen should start a fresh round when Git changed after export")
+    current = session.get()
+    T.expect_eq(current.annotation_count, 0, "Git changes after export should start a fresh round")
+    T.expect_eq(current.exported_at, nil, "fresh round should clear exported marker")
   end
 
   local function run_dirty_editor_guard_test()
@@ -121,7 +130,7 @@ return function()
   end
 
   run_session_command_test()
-  run_autorefresh_test()
+  run_post_export_git_change_opens_fresh_test()
   run_dirty_editor_guard_test()
   T.finish()
 end

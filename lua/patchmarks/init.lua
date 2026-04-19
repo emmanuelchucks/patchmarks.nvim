@@ -1,4 +1,3 @@
-local autocmds = require("patchmarks.autocmds")
 local config = require("patchmarks.config")
 local git = require("patchmarks.git")
 local review = require("patchmarks.review")
@@ -12,15 +11,12 @@ local function notification(msg, level)
   vim.notify(msg, level or vim.log.levels.INFO, { title = "Patchmarks" })
 end
 
-local function build_session(repo_root, opts)
-  opts = opts or {}
-  local snapshot = git.build_snapshot(repo_root)
+local function load_previous(repo_root)
   local active = session.get()
-  local previous = nil
-  if opts.use_previous ~= false then
-    previous = (active ~= nil and active.repo_root == repo_root) and active or storage.load(repo_root)
-  end
+  return (active ~= nil and active.repo_root == repo_root) and active or storage.load(repo_root)
+end
 
+local function build_session(snapshot, previous)
   if previous ~= nil then
     session.touch(previous)
   end
@@ -43,14 +39,17 @@ function M.open()
     return false
   end
 
-  local current = build_session(repo_root)
+  local snapshot = git.build_snapshot(repo_root)
+  local previous = load_previous(repo_root)
+  if previous ~= nil and previous.exported_at ~= nil and previous.exported_change_key ~= snapshot.change_key then
+    previous = nil
+    notification("Git changes detected since last export; started a new review round")
+  end
+
+  local current = build_session(snapshot, previous)
   session.set(current)
   storage.save(current)
-  local ok = review.open(current)
-  if ok then
-    autocmds.attach()
-  end
-  return ok
+  return review.open(current)
 end
 
 function M.refresh()
@@ -62,18 +61,14 @@ function M.refresh()
 
   local current_path = vim.api.nvim_buf_get_name(0)
   local current_cursor = vim.api.nvim_win_get_cursor(0)
-  local current = build_session(repo_root)
+  local current = build_session(git.build_snapshot(repo_root), load_previous(repo_root))
   session.set(current)
   storage.save(current)
 
-  local ok = review.open(current, {
+  return review.open(current, {
     preferred_path = current_path ~= "" and (vim.uv.fs_realpath(current_path) or vim.fs.normalize(current_path)) or nil,
     preferred_cursor = current_cursor,
   })
-  if ok then
-    autocmds.attach()
-  end
-  return ok
 end
 
 function M.new()
@@ -87,15 +82,11 @@ function M.new()
     return false
   end
 
-  local current = build_session(repo_root, { use_previous = false })
+  local current = build_session(git.build_snapshot(repo_root), nil)
   session.set(current)
   storage.save(current)
 
-  local ok = review.open(current)
-  if ok then
-    autocmds.attach()
-  end
-  return ok
+  return review.open(current)
 end
 
 function M.close()
@@ -105,7 +96,6 @@ function M.close()
     return false
   end
 
-  autocmds.detach()
   return review.close(current)
 end
 
@@ -116,7 +106,6 @@ function M.discard()
     return false
   end
 
-  autocmds.detach()
   if not review.close(session.get()) then
     return false
   end
