@@ -71,7 +71,11 @@ end
 
 local function overlapping_annotation(file, start_lnum, end_lnum, ignore_id)
   for _, annotation in ipairs(file.annotations) do
-    if annotation.id ~= ignore_id and start_lnum <= annotation.end_lnum and end_lnum >= annotation.start_lnum then
+    if
+      annotation.id ~= ignore_id
+      and start_lnum <= annotation.end_lnum
+      and end_lnum >= annotation.start_lnum
+    then
       return annotation
     end
   end
@@ -164,7 +168,8 @@ local function save_annotation(file, start_lnum, end_lnum, body, existing)
     }
   end
 
-  local overlapping = overlapping_annotation(file, start_lnum, end_lnum, existing and existing.id or nil)
+  local overlapping =
+    overlapping_annotation(file, start_lnum, end_lnum, existing and existing.id or nil)
   if overlapping ~= nil then
     overlapping.start_lnum = start_lnum
     overlapping.end_lnum = end_lnum
@@ -179,10 +184,11 @@ local function save_annotation(file, start_lnum, end_lnum, body, existing)
     }
   end
 
-  local annotation = existing or {
-    id = session.next_annotation_id(current),
-    created_at = os.date("!%Y-%m-%dT%H:%M:%SZ"),
-  }
+  local annotation = existing
+    or {
+      id = session.next_annotation_id(current),
+      created_at = os.date("!%Y-%m-%dT%H:%M:%SZ"),
+    }
 
   annotation.start_lnum = start_lnum
   annotation.end_lnum = end_lnum

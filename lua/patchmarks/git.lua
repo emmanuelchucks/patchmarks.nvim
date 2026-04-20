@@ -3,10 +3,12 @@ local M = {}
 local function git(args, opts)
   opts = opts or {}
 
-  local result = vim.system(vim.list_extend({ "git" }, args), {
-    cwd = opts.cwd,
-    text = true,
-  }):wait()
+  local result = vim
+    .system(vim.list_extend({ "git" }, args), {
+      cwd = opts.cwd,
+      text = true,
+    })
+    :wait()
 
   if result.code ~= 0 and not opts.allow_fail then
     local stderr = vim.trim(result.stderr or "")
@@ -177,6 +179,12 @@ local function build_change_key(repo_root, files, status_output)
   return vim.fn.sha256(table.concat(parts, "\0"))
 end
 
+local function status_result(repo_root)
+  return git({ "status", "--porcelain=v1", "-z", "--untracked-files=all" }, {
+    cwd = repo_root,
+  })
+end
+
 function M.repo_root(cwd)
   local result = git({ "rev-parse", "--show-toplevel" }, {
     cwd = cwd,
@@ -212,14 +220,6 @@ function M.git_path(repo_root, suffix)
   return vim.fs.normalize(vim.fs.joinpath(repo_root, path))
 end
 
-function M.changed_files(repo_root)
-  local result = git({ "status", "--porcelain=v1", "-z", "--untracked-files=all" }, {
-    cwd = repo_root,
-  })
-
-  return parse_status_z(result.stdout or "")
-end
-
 function M.first_changed_line(repo_root, file)
   if file.kind == "untracked" then
     return 1
@@ -239,9 +239,7 @@ end
 
 function M.build_snapshot(repo_root)
   local repo_name = vim.fs.basename(repo_root)
-  local status = git({ "status", "--porcelain=v1", "-z", "--untracked-files=all" }, {
-    cwd = repo_root,
-  })
+  local status = status_result(repo_root)
   local files = parse_status_z(status.stdout or "")
 
   for _, file in ipairs(files) do

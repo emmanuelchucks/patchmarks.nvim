@@ -10,6 +10,7 @@ CONTENTS                                                      *patchmarks*
 5. Workflow ........................................ |patchmarks-workflow|
 6. Configuration ................................... |patchmarks-config|
 7. Notes ............................................. |patchmarks-notes|
+8. Development ......................................... |patchmarks-dev|
 
 ==============================================================================
 1. Introduction                                             *patchmarks-intro*
@@ -165,5 +166,20 @@ Empty-body behavior:
 - new annotation: empty save/quit is a no-op
 - existing annotation: empty `:q` keeps the original annotation
 - existing annotation: empty `:w` or `:wq` asks whether to delete it
+
+==============================================================================
+8. Development                                                *patchmarks-dev*
+
+Quality commands: >
+  make format
+  make lint
+  make test
+  make check
+<
+Project tooling:
+
+- StyLua formats the Lua source tree
+- Selene lints the Lua source tree
+- .luarc.json configures project diagnostics for LuaLS
 
 vim:tw=78:ts=8:noet:ft=help:norl:

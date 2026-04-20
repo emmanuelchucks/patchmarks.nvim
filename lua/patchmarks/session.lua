@@ -27,7 +27,8 @@ local function normalize_file(file)
   file.note_count = #file.annotations
   file.first_changed_line = file.first_changed_line or 1
   file.quickfix_status = file.quickfix_status or "M"
-  file.absolute_path = vim.uv.fs_realpath(file.absolute_path or "") or vim.fs.normalize(file.absolute_path or "")
+  file.absolute_path = vim.uv.fs_realpath(file.absolute_path or "")
+    or vim.fs.normalize(file.absolute_path or "")
 
   table.sort(file.annotations, function(a, b)
     if a.start_lnum == b.start_lnum then
@@ -86,7 +87,8 @@ function M.new_from_snapshot(snapshot, previous)
   local seen = {}
 
   for _, file in ipairs(snapshot.files) do
-    local previous_file = previous and previous.file_lookup and previous.file_lookup[file.path] or nil
+    local previous_file = previous and previous.file_lookup and previous.file_lookup[file.path]
+      or nil
     files[#files + 1] = {
       path = file.path,
       kind = file.kind,

@@ -26,7 +26,8 @@ function M.build_text(current)
 
   for _, file in ipairs(files) do
     for _, annotation in ipairs(file.annotations) do
-      lines[#lines + 1] = string.format("[%s:%d-%d]", file.path, annotation.start_lnum, annotation.end_lnum)
+      lines[#lines + 1] =
+        string.format("[%s:%d-%d]", file.path, annotation.start_lnum, annotation.end_lnum)
       lines[#lines + 1] = annotation.body
       lines[#lines + 1] = ""
     end

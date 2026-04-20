@@ -31,6 +31,10 @@ return function()
   local function save_editor(body)
     local state = editor.state
     T.expect(state ~= nil, "editor should be open")
+    if state == nil then
+      error("editor should be open")
+    end
+
     vim.api.nvim_buf_set_lines(state.bufnr, 0, -1, false, vim.split(body, "\n", { plain = true }))
     vim.cmd("wq")
   end
@@ -55,8 +59,16 @@ return function()
     annotations.preview_current()
     T.expect(preview.is_open(), "preview should open for annotation under cursor")
     T.expect(preview.state ~= nil, "preview state should be tracked")
+    if preview.state == nil then
+      error("preview state should be tracked")
+    end
+
     local preview_lines = vim.api.nvim_buf_get_lines(preview.state.bufnr, 0, -1, false)
-    T.expect_eq(table.concat(preview_lines, "\n"), "Tighten this naming.", "preview should show annotation body")
+    T.expect_eq(
+      table.concat(preview_lines, "\n"),
+      "Tighten this naming.",
+      "preview should show annotation body"
+    )
 
     vim.cmd("normal! k")
     vim.api.nvim_exec_autocmds("CursorMoved", {})
@@ -64,12 +76,20 @@ return function()
 
     local text = exporter.export_current()
     T.expect(text ~= nil, "export should produce text")
+    if text == nil then
+      error("export should produce text")
+    end
+
     T.expect(text:match("PATCHMARKS REVIEW"), "export header should be present")
     T.expect(text:match("%[alpha.txt:2%-2%]"), "alpha annotation should be exported")
     T.expect(text:match("%[beta.txt:3%-3%]"), "beta annotation should be exported")
     T.expect_eq(vim.fn.getreg('"'), text, "unnamed register should receive export")
 
     local current = session.get()
+    if current == nil then
+      error("session should exist after export")
+    end
+
     T.expect(current.exported_at ~= nil, "session should record exported_at")
   end
 
@@ -95,7 +115,11 @@ return function()
     annotations.delete_current()
     local exported = exporter.export_current()
     T.expect_eq(exported, nil, "empty export should return nil")
-    T.expect_eq(vim.fn.getreg('"'), "sentinel", "empty export should not overwrite unnamed register")
+    T.expect_eq(
+      vim.fn.getreg('"'),
+      "sentinel",
+      "empty export should not overwrite unnamed register"
+    )
   end
 
   run_preview_and_export_test()

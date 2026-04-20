@@ -38,11 +38,14 @@ return function()
     local ok = patchmarks.open()
     T.expect(ok == true, "PatchmarksOpen should succeed in a git repo with changes")
 
-    local current = session.get()
-    T.expect(current ~= nil, "session should be stored")
+    local current = H.require_value(session.get(), "session should be stored")
     T.expect_eq(current.repo_root, H.realpath(repo), "session repo_root")
     T.expect_eq(#current.files, 3, "should include modified, renamed, and untracked files only")
-    T.expect_eq(current.files[1].path, "renamed.txt", "git order should be preserved with deleted file skipped")
+    T.expect_eq(
+      current.files[1].path,
+      "renamed.txt",
+      "git order should be preserved with deleted file skipped"
+    )
 
     local qf = vim.fn.getqflist({ title = 1, items = 1, idx = 1, size = 1, winid = 1 })
     T.expect(qf.winid > 0, "quickfix window should be open")
@@ -52,8 +55,16 @@ return function()
     T.expect_eq(qf.items[1].user_data.path, "renamed.txt", "quickfix user_data path")
 
     local current_path = vim.api.nvim_buf_get_name(0)
-    T.expect_eq(current_path, vim.api.nvim_buf_get_name(qf.items[1].bufnr), "current buffer should match first quickfix item")
-    T.expect_eq(vim.api.nvim_win_get_cursor(0)[1], qf.items[1].lnum, "cursor should land on first changed line")
+    T.expect_eq(
+      current_path,
+      vim.api.nvim_buf_get_name(qf.items[1].bufnr),
+      "current buffer should match first quickfix item"
+    )
+    T.expect_eq(
+      vim.api.nvim_win_get_cursor(0)[1],
+      qf.items[1].lnum,
+      "cursor should land on first changed line"
+    )
     T.expect_eq(vim.bo.readonly, true, "review buffer should be readonly")
     T.expect_eq(vim.bo.modifiable, false, "review buffer should not be modifiable")
     T.expect_eq(vim.b.patchmarks_review, true, "review buffer marker")
@@ -78,18 +89,28 @@ return function()
     local repo = setup_repo()
     vim.cmd.cd(repo)
 
-    T.expect(patchmarks.open() == true, "PatchmarksOpen should succeed for quickfix order stability")
+    T.expect(
+      patchmarks.open() == true,
+      "PatchmarksOpen should succeed for quickfix order stability"
+    )
     local before = vim.tbl_map(function(item)
       return item.user_data.path
     end, vim.fn.getqflist())
 
     vim.cmd("cc 2")
     local selected_before_idx = vim.fn.getqflist({ idx = 0 }).idx
-    T.expect_eq(selected_before_idx, 2, "test should move quickfix selection to the second item before annotating")
-    T.expect_eq(vim.fs.basename(vim.api.nvim_buf_get_name(0)), "tracked.txt", "test should annotate a non-first quickfix item")
+    T.expect_eq(
+      selected_before_idx,
+      2,
+      "test should move quickfix selection to the second item before annotating"
+    )
+    T.expect_eq(
+      vim.fs.basename(vim.api.nvim_buf_get_name(0)),
+      "tracked.txt",
+      "test should annotate a non-first quickfix item"
+    )
     annotations.add_current()
-    local state = editor.state
-    T.expect(state ~= nil, "editor should open for quickfix order stability")
+    local state = H.require_value(editor.state, "editor should open for quickfix order stability")
     vim.api.nvim_buf_set_lines(state.bufnr, 0, -1, false, { "Keep order stable." })
     vim.cmd("wq")
 
@@ -97,9 +118,21 @@ return function()
     local after = vim.tbl_map(function(item)
       return item.user_data.path
     end, after_qf)
-    T.expect_eq(table.concat(after, ","), table.concat(before, ","), "quickfix order should stay stable after annotation")
-    T.expect_eq(vim.fn.getqflist({ idx = 0 }).idx, 2, "quickfix focus should stay on the same item after annotation")
-    T.expect_eq(vim.fs.basename(vim.api.nvim_buf_get_name(0)), "tracked.txt", "current buffer should stay on the annotated file after annotation")
+    T.expect_eq(
+      table.concat(after, ","),
+      table.concat(before, ","),
+      "quickfix order should stay stable after annotation"
+    )
+    T.expect_eq(
+      vim.fn.getqflist({ idx = 0 }).idx,
+      2,
+      "quickfix focus should stay on the same item after annotation"
+    )
+    T.expect_eq(
+      vim.fs.basename(vim.api.nvim_buf_get_name(0)),
+      "tracked.txt",
+      "current buffer should stay on the annotated file after annotation"
+    )
   end
 
   run_open_flow_test()

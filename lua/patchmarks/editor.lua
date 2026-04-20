@@ -1,6 +1,20 @@
 local float = require("patchmarks.float")
 
+---@class Patchmarks.EditorSaveResult
+---@field outcome string
+---@field annotation any?
+
+---@class Patchmarks.EditorState
+---@field bufnr integer
+---@field winid integer
+---@field source_winid integer
+---@field source_cursor integer[]
+---@field original_body string
+---@field annotation_exists boolean
+---@field on_save fun(body: string): Patchmarks.EditorSaveResult?
+
 local M = {
+  ---@type Patchmarks.EditorState?
   state = nil,
 }
 
@@ -21,11 +35,11 @@ local function trim_trailing_blank(lines)
 end
 
 local function close()
-  if M.state == nil then
+  local state = M.state
+  if state == nil then
     return
   end
 
-  local state = M.state
   M.state = nil
 
   if vim.api.nvim_win_is_valid(state.winid) then
@@ -47,20 +61,21 @@ local function editor_body(bufnr)
 end
 
 local function save()
-  if M.state == nil then
+  local state = M.state
+  if state == nil then
     return false
   end
 
-  local body = editor_body(M.state.bufnr)
-  local result = M.state.on_save(body) or { outcome = "saved", annotation = body ~= "" }
+  local body = editor_body(state.bufnr)
+  local result = state.on_save(body) or { outcome = "saved", annotation = body ~= "" }
   if result.outcome == "cancelled" then
     return false
   end
 
-  M.state.original_body = result.annotation and body or ""
-  M.state.annotation_exists = result.annotation ~= nil
-  if vim.api.nvim_buf_is_valid(M.state.bufnr) then
-    vim.bo[M.state.bufnr].modified = false
+  state.original_body = result.annotation and body or ""
+  state.annotation_exists = result.annotation ~= nil
+  if vim.api.nvim_buf_is_valid(state.bufnr) then
+    vim.bo[state.bufnr].modified = false
   end
 
   return result.outcome
@@ -120,7 +135,8 @@ function M.is_open()
 end
 
 function M.has_unsaved_changes()
-  return M.state ~= nil and vim.api.nvim_buf_is_valid(M.state.bufnr) and vim.bo[M.state.bufnr].modified
+  local state = M.state
+  return state ~= nil and vim.api.nvim_buf_is_valid(state.bufnr) and vim.bo[state.bufnr].modified
 end
 
 function M.request_close(reason)
@@ -158,10 +174,14 @@ function M.open(opts)
   local width = 72
   local height = 8
   local bufnr = vim.api.nvim_create_buf(false, true)
-  local winid = vim.api.nvim_open_win(bufnr, true, float.window_opts(source_winid, width, height, {
-    title = opts.title,
-    title_pos = "center",
-  }))
+  local winid = vim.api.nvim_open_win(
+    bufnr,
+    true,
+    float.window_opts(source_winid, width, height, {
+      title = opts.title,
+      title_pos = "center",
+    })
+  )
 
   local lines = vim.split(opts.body or "", "\n", { plain = true })
   if #lines == 0 then

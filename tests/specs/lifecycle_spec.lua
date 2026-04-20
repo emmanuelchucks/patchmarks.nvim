@@ -27,8 +27,7 @@ return function()
   end
 
   local function save_editor(body)
-    local state = editor.state
-    T.expect(state ~= nil, "editor should be open")
+    local state = H.require_value(editor.state, "editor should be open")
     vim.api.nvim_buf_set_lines(state.bufnr, 0, -1, false, vim.split(body, "\n", { plain = true }))
     vim.cmd("wq")
   end
@@ -42,8 +41,9 @@ return function()
     annotations.add_current()
     save_editor("Persist me.")
 
-    local current = session.get()
-    local session_path = storage.path(current.repo_root)
+    local current = H.require_value(session.get(), "session should exist after save")
+    local session_path =
+      H.require_value(storage.path(current.repo_root), "session path should exist")
     T.expect(vim.fn.filereadable(session_path) == 1, "session should be persisted")
 
     vim.b.patchmarks_saved_readonly = true
@@ -60,14 +60,18 @@ return function()
     T.expect(session.get() ~= nil, "close should keep session in memory")
 
     T.expect(patchmarks.open() == true, "PatchmarksOpen should reopen persisted session")
-    current = session.get()
+    current = H.require_value(session.get(), "session should exist after reopen")
     T.expect_eq(current.annotation_count, 1, "reopen should preserve annotations")
 
     T.expect(patchmarks.new() == true, "PatchmarksNew should start a new round")
-    current = session.get()
+    current = H.require_value(session.get(), "session should exist after new")
     T.expect_eq(current.annotation_count, 0, "new round should discard old annotations")
     local persisted = H.decode_json(session_path)
-    T.expect_eq(#persisted.files["tracked.txt"].annotations, 0, "new round should persist cleared annotations")
+    T.expect_eq(
+      #persisted.files["tracked.txt"].annotations,
+      0,
+      "new round should persist cleared annotations"
+    )
 
     T.expect(patchmarks.discard() == true, "PatchmarksDiscard should succeed")
     T.expect_eq(session.get(), nil, "discard should clear current session")
@@ -78,24 +82,37 @@ return function()
     local repo = setup_repo()
     vim.cmd.cd(repo)
 
-    T.expect(patchmarks.open() == true, "PatchmarksOpen should succeed for post-export fresh round test")
+    T.expect(
+      patchmarks.open() == true,
+      "PatchmarksOpen should succeed for post-export fresh round test"
+    )
     vim.api.nvim_win_set_cursor(0, { 2, 0 })
     annotations.add_current()
     save_editor("Export me.")
 
     T.expect(exporter.export_current() ~= nil, "export should succeed before fresh round test")
-    local current = session.get()
+    local current = H.require_value(session.get(), "session should exist after export")
     T.expect_eq(current.annotation_count, 1, "export setup should keep annotation before reopen")
 
     T.expect(patchmarks.close() == true, "PatchmarksClose should succeed before reopen")
-    T.expect(patchmarks.open() == true, "PatchmarksOpen should restore exported session when Git is unchanged")
-    current = session.get()
-    T.expect_eq(current.annotation_count, 1, "unchanged Git after export should restore existing session")
+    T.expect(
+      patchmarks.open() == true,
+      "PatchmarksOpen should restore exported session when Git is unchanged"
+    )
+    current = H.require_value(session.get(), "session should exist after unchanged reopen")
+    T.expect_eq(
+      current.annotation_count,
+      1,
+      "unchanged Git after export should restore existing session"
+    )
 
     T.expect(patchmarks.close() == true, "PatchmarksClose should succeed before Git change")
     H.write_file(vim.fs.joinpath(repo, "tracked.txt"), { "alpha", "BETA changed again", "gamma" })
-    T.expect(patchmarks.open() == true, "PatchmarksOpen should start a fresh round when Git changed after export")
-    current = session.get()
+    T.expect(
+      patchmarks.open() == true,
+      "PatchmarksOpen should start a fresh round when Git changed after export"
+    )
+    current = H.require_value(session.get(), "session should exist after fresh round reopen")
     T.expect_eq(current.annotation_count, 0, "Git changes after export should start a fresh round")
     T.expect_eq(current.exported_at, nil, "fresh round should clear exported marker")
   end
@@ -107,25 +124,23 @@ return function()
     T.expect(patchmarks.open() == true, "PatchmarksOpen should succeed for dirty-editor guard")
     vim.api.nvim_win_set_cursor(0, { 2, 0 })
     annotations.add_current()
-    local state = editor.state
-    T.expect(state ~= nil, "editor should open")
+    local state = H.require_value(editor.state, "editor should open")
     vim.api.nvim_buf_set_lines(state.bufnr, 0, -1, false, { "Unsaved draft" })
 
-    local original_confirm = vim.fn.confirm
-    vim.fn.confirm = function()
-      return 2
-    end
-    T.expect_eq(patchmarks.close(), false, "PatchmarksClose should abort when unsaved editor close is declined")
-    vim.fn.confirm = original_confirm
+    T.expect_eq(
+      H.with_confirm_result(2, patchmarks.close),
+      false,
+      "PatchmarksClose should abort when unsaved editor close is declined"
+    )
 
     T.expect(editor.is_open(), "editor should remain open after declining close")
     T.expect(session.get() ~= nil, "session should remain active after declining close")
 
-    vim.fn.confirm = function()
-      return 1
-    end
-    T.expect_eq(patchmarks.close(), true, "PatchmarksClose should proceed when unsaved editor discard is accepted")
-    vim.fn.confirm = original_confirm
+    T.expect_eq(
+      H.with_confirm_result(1, patchmarks.close),
+      true,
+      "PatchmarksClose should proceed when unsaved editor discard is accepted"
+    )
     T.expect(not editor.is_open(), "editor should close after accepted discard")
   end
 
