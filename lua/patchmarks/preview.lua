@@ -1,16 +1,23 @@
 local config = require("patchmarks.config")
 local float = require("patchmarks.float")
 
+---@class Patchmarks.PreviewState
+---@field bufnr integer
+---@field winid integer
+---@field augroup integer
+---@field key string?
+
 local M = {
+  ---@type Patchmarks.PreviewState?
   state = nil,
 }
 
 local function close()
-  if M.state == nil then
+  local state = M.state
+  if state == nil then
     return
   end
 
-  local state = M.state
   M.state = nil
 
   pcall(vim.api.nvim_del_augroup_by_id, state.augroup)
@@ -29,7 +36,12 @@ function M.is_open()
 end
 
 function M.open(opts)
-  if M.state ~= nil and M.state.key ~= nil and M.state.key == opts.key and vim.api.nvim_win_is_valid(M.state.winid) then
+  if
+    M.state ~= nil
+    and M.state.key ~= nil
+    and M.state.key == opts.key
+    and vim.api.nvim_win_is_valid(M.state.winid)
+  then
     return {
       bufnr = M.state.bufnr,
       winid = M.state.winid,
@@ -43,11 +55,15 @@ function M.open(opts)
   local width = opts.width or preview_config.width
   local height = opts.height or preview_config.height
   local bufnr = vim.api.nvim_create_buf(false, true)
-  local winid = vim.api.nvim_open_win(bufnr, false, float.window_opts(source_winid, width, height, {
-    title = opts.title,
-    title_pos = "center",
-    focusable = false,
-  }))
+  local winid = vim.api.nvim_open_win(
+    bufnr,
+    false,
+    float.window_opts(source_winid, width, height, {
+      title = opts.title,
+      title_pos = "center",
+      focusable = false,
+    })
+  )
 
   local lines = vim.split(opts.body or "", "\n", { plain = true })
   if #lines == 0 then
@@ -62,7 +78,8 @@ function M.open(opts)
   vim.wo[winid].wrap = true
   vim.wo[winid].winfixbuf = true
 
-  local preview_group = vim.api.nvim_create_augroup(string.format("PatchmarksPreview%d", bufnr), { clear = true })
+  local preview_group =
+    vim.api.nvim_create_augroup(string.format("PatchmarksPreview%d", bufnr), { clear = true })
   vim.api.nvim_create_autocmd({ "CursorMoved", "CursorMovedI", "BufLeave", "WinLeave" }, {
     group = preview_group,
     callback = function()

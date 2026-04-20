@@ -41,7 +41,11 @@ function M.open()
 
   local snapshot = git.build_snapshot(repo_root)
   local previous = load_previous(repo_root)
-  if previous ~= nil and previous.exported_at ~= nil and previous.exported_change_key ~= snapshot.change_key then
+  if
+    previous ~= nil
+    and previous.exported_at ~= nil
+    and previous.exported_change_key ~= snapshot.change_key
+  then
     previous = nil
     notification("Git changes detected since last export; started a new review round")
   end
@@ -66,7 +70,9 @@ function M.refresh()
   storage.save(current)
 
   return review.open(current, {
-    preferred_path = current_path ~= "" and (vim.uv.fs_realpath(current_path) or vim.fs.normalize(current_path)) or nil,
+    preferred_path = current_path ~= "" and (vim.uv.fs_realpath(current_path) or vim.fs.normalize(
+      current_path
+    )) or nil,
     preferred_cursor = current_cursor,
   })
 end

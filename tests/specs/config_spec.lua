@@ -27,6 +27,10 @@ return function()
   local function save_editor(body)
     local state = require("patchmarks.editor").state
     T.expect(state ~= nil, "editor should be open")
+    if state == nil then
+      error("editor should be open")
+    end
+
     vim.api.nvim_buf_set_lines(state.bufnr, 0, -1, false, vim.split(body, "\n", { plain = true }))
     vim.cmd("wq")
   end
@@ -57,8 +61,16 @@ return function()
     vim.api.nvim_exec_autocmds("CursorHold", { buffer = 0 })
     T.expect(preview.is_open(), "CursorHold should open preview on annotated line")
     T.expect(preview.state ~= nil, "preview state should exist after CursorHold")
-    T.expect_eq(vim.api.nvim_win_get_width(preview.state.winid), 50, "CursorHold preview should use configured width")
-    T.expect_eq(vim.api.nvim_win_get_height(preview.state.winid), 4, "CursorHold preview should use configured height")
+    T.expect_eq(
+      vim.api.nvim_win_get_width(preview.state.winid),
+      50,
+      "CursorHold preview should use configured width"
+    )
+    T.expect_eq(
+      vim.api.nvim_win_get_height(preview.state.winid),
+      4,
+      "CursorHold preview should use configured height"
+    )
 
     vim.api.nvim_win_set_cursor(0, { 1, 0 })
     vim.api.nvim_exec_autocmds("CursorHold", { buffer = 0 })
@@ -66,7 +78,11 @@ return function()
 
     patchmarks.setup({})
     local current = config.get()
-    T.expect_eq(current.preview.trigger, "manual", "setup with empty opts should restore default trigger")
+    T.expect_eq(
+      current.preview.trigger,
+      "manual",
+      "setup with empty opts should restore default trigger"
+    )
     T.expect_eq(current.preview.width, 72, "setup with empty opts should restore default width")
     T.expect_eq(current.preview.height, 6, "setup with empty opts should restore default height")
   end

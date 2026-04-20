@@ -19,7 +19,9 @@ function M.new_harness(name)
 
   local function expect_eq(actual, expected, msg)
     if actual ~= expected then
-      fail(string.format("%s: expected %s, got %s", msg, vim.inspect(expected), vim.inspect(actual)))
+      fail(
+        string.format("%s: expected %s, got %s", msg, vim.inspect(expected), vim.inspect(actual))
+      )
     end
   end
 
@@ -41,10 +43,12 @@ end
 
 function M.git(cwd, ...)
   local args = { ... }
-  local result = vim.system(vim.list_extend({ "git" }, args), {
-    cwd = cwd,
-    text = true,
-  }):wait()
+  local result = vim
+    .system(vim.list_extend({ "git" }, args), {
+      cwd = cwd,
+      text = true,
+    })
+    :wait()
 
   if result.code ~= 0 then
     error(string.format("git failed (%s): %s", table.concat(args, " "), result.stderr))
@@ -70,6 +74,38 @@ end
 
 function M.realpath(path)
   return vim.uv.fs_realpath(path) or vim.fs.normalize(path)
+end
+
+---@generic T
+---@param value T?
+---@param msg string
+---@return T
+function M.require_value(value, msg)
+  if value == nil then
+    error(msg)
+  end
+
+  return value
+end
+
+---@generic T
+---@param result integer
+---@param fn fun(): T?
+---@return T?
+function M.with_confirm_result(result, fn)
+  local original_confirm = vim.fn.confirm
+  ---@diagnostic disable-next-line: duplicate-set-field
+  vim.fn.confirm = function()
+    return result
+  end
+
+  local ok, value = xpcall(fn, debug.traceback)
+  vim.fn.confirm = original_confirm
+  if not ok then
+    error(value)
+  end
+
+  return value
 end
 
 return M

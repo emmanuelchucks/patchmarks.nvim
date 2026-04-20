@@ -173,6 +173,30 @@ Headless test suite:
 nvim --headless -u NONE -i NONE -c "lua dofile('tests/run.lua')" -c qall!
 ```
 
+## Quality
+
+Local development commands:
+
+```sh
+make format
+make lint
+make test
+make check
+```
+
+Tooling:
+
+- `StyLua` for Lua formatting
+- `Selene` for Lua linting
+- `.luarc.json` for LuaLS project diagnostics
+
+If you need the tools locally and already have Rust installed:
+
+```sh
+cargo install --locked stylua
+cargo install selene
+```
+
 Test layout:
 
 - `tests/specs/`
@@ -189,6 +213,7 @@ Keep changes aligned with the project boundary:
 - Patchmarks owns review-session orchestration and annotation UX.
 - Diff rendering and hunk UX belong to the user's existing diff tools.
 - Favor Neovim and Git built-ins over extra abstraction.
+- Run `make check` before sending changes upstream.
 
 ## Help
 
