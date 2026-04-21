@@ -32,7 +32,13 @@ local function active_repo_root()
   return git.repo_root(vim.uv.cwd())
 end
 
-function M.open()
+local function attach_current(current)
+  review.attach(current)
+  review.attach_buffer(current, vim.api.nvim_get_current_buf())
+  return true
+end
+
+function M.start()
   local repo_root = git.repo_root(vim.uv.cwd())
   if repo_root == nil or repo_root == "" then
     notification("not in a Git repository", vim.log.levels.ERROR)
@@ -53,7 +59,7 @@ function M.open()
   local current = build_session(snapshot, previous)
   session.set(current)
   storage.save(current)
-  return review.open(current)
+  return attach_current(current)
 end
 
 function M.refresh()
@@ -63,18 +69,12 @@ function M.refresh()
     return false
   end
 
-  local current_path = vim.api.nvim_buf_get_name(0)
-  local current_cursor = vim.api.nvim_win_get_cursor(0)
   local current = build_session(git.build_snapshot(repo_root), load_previous(repo_root))
   session.set(current)
   storage.save(current)
+  review.refresh_files(current)
 
-  return review.open(current, {
-    preferred_path = current_path ~= "" and (vim.uv.fs_realpath(current_path) or vim.fs.normalize(
-      current_path
-    )) or nil,
-    preferred_cursor = current_cursor,
-  })
+  return attach_current(current)
 end
 
 function M.new()
@@ -92,10 +92,10 @@ function M.new()
   session.set(current)
   storage.save(current)
 
-  return review.open(current)
+  return attach_current(current)
 end
 
-function M.close()
+function M.stop()
   local current = session.get()
   if current == nil then
     notification("no active Patchmarks session", vim.log.levels.INFO)
@@ -103,6 +103,16 @@ function M.close()
   end
 
   return review.close(current)
+end
+
+function M.files()
+  local current = session.get()
+  if current == nil then
+    notification("no active Patchmarks session", vim.log.levels.INFO)
+    return false
+  end
+
+  return review.open_files(current)
 end
 
 function M.discard()

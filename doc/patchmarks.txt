@@ -17,10 +17,9 @@ CONTENTS                                                      *patchmarks*
 
 Patchmarks is a file-oriented Git review plugin.
 
-It opens the current changed-file set into normal source buffers, populates
-the built-in quickfix list, and lets you attach freeform annotations to lines
-or line ranges. Those annotations can then be exported back to an LLM coding
-agent.
+It starts a review session for the current Git change set and lets you attach
+freeform annotations to lines or line ranges in normal file buffers. Those
+annotations can then be exported back to an LLM coding agent.
 
 Patchmarks does not render diffs itself.
 
@@ -48,9 +47,13 @@ Requirements:
 ==============================================================================
 3. Commands                                                 *patchmarks-cmds*
 
-                                                        *:PatchmarksOpen*
-:PatchmarksOpen
-  Open the current review session, or create one from the current Git state.
+                                                       *:PatchmarksStart*
+:PatchmarksStart
+  Start or resume a Patchmarks session for the current Git worktree.
+
+                                                       *:PatchmarksFiles*
+:PatchmarksFiles
+  Open a native quickfix list for the active session's changed files.
 
                                                      *:PatchmarksRefresh*
 :PatchmarksRefresh
@@ -64,9 +67,9 @@ Requirements:
 :PatchmarksExport
   Export annotations to registers and clipboard when available.
 
-                                                       *:PatchmarksClose*
-:PatchmarksClose
-  Close Patchmarks UI state but keep the session persisted.
+                                                        *:PatchmarksStop*
+:PatchmarksStop
+  Stop Patchmarks UI state but keep the session persisted.
 
                                                      *:PatchmarksDiscard*
 :PatchmarksDiscard
@@ -108,14 +111,15 @@ active Patchmarks session.
 ==============================================================================
 5. Workflow                                              *patchmarks-workflow*
 
-1. Run |:PatchmarksOpen| inside a Git worktree.
-2. Use quickfix to move between changed files.
+1. Open a changed source file normally.
+2. Run |:PatchmarksStart| inside a Git worktree.
 3. Add annotations with `<localleader>a`.
 4. Preview or edit them as needed.
-5. Run |:PatchmarksExport| to copy a compact review block.
-6. If the last review was exported and Git has changed, |:PatchmarksOpen|
+5. Optionally run |:PatchmarksFiles| for a native quickfix changed-file list.
+6. Run |:PatchmarksExport| to copy a compact review block.
+7. If the last review was exported and Git has changed, |:PatchmarksStart|
    starts a fresh round automatically.
-7. Run |:PatchmarksNew| when you want to force a fresh round.
+8. Run |:PatchmarksNew| when you want to force a fresh round.
 
 Patchmarks does not make source buffers read-only. Session files remain normal
 editable file buffers, so existing tools like gitsigns.nvim, mini.diff, or
@@ -146,7 +150,7 @@ Session state is persisted under: >
   .git/patchmarks/current.json
 <
 If the session was already exported and Git has changed since that export,
-|:PatchmarksOpen| starts a fresh round instead of restoring old annotations.
+|:PatchmarksStart| starts a fresh round instead of restoring old annotations.
 
 Supported in v1:
 

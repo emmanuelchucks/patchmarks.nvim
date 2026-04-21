@@ -28,6 +28,10 @@ return function()
     return tmp
   end
 
+  local function edit_alpha(repo)
+    vim.cmd.edit(vim.fn.fnameescape(vim.fs.joinpath(repo, "alpha.txt")))
+  end
+
   local function save_editor(body)
     local state = editor.state
     T.expect(state ~= nil, "editor should be open")
@@ -42,8 +46,9 @@ return function()
   local function run_preview_and_export_test()
     local repo = setup_repo()
     vim.cmd.cd(repo)
+    edit_alpha(repo)
 
-    T.expect(patchmarks.open() == true, "PatchmarksOpen should succeed")
+    T.expect(patchmarks.start() == true, "PatchmarksStart should succeed")
 
     vim.api.nvim_win_set_cursor(0, { 2, 0 })
     annotations.add_current()
@@ -96,8 +101,9 @@ return function()
   local function run_editor_append_and_empty_export_test()
     local repo = setup_repo()
     vim.cmd.cd(repo)
+    edit_alpha(repo)
 
-    T.expect(patchmarks.open() == true, "PatchmarksOpen should succeed for append test")
+    T.expect(patchmarks.start() == true, "PatchmarksStart should succeed for append test")
 
     vim.api.nvim_win_set_cursor(0, { 2, 0 })
     annotations.add_current()
