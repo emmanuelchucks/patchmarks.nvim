@@ -65,9 +65,34 @@ return function()
       qf.items[1].lnum,
       "cursor should land on first changed line"
     )
-    T.expect_eq(vim.bo.readonly, true, "review buffer should be readonly")
-    T.expect_eq(vim.bo.modifiable, false, "review buffer should not be modifiable")
-    T.expect_eq(vim.b.patchmarks_review, true, "review buffer marker")
+    T.expect_eq(vim.bo.readonly, false, "session file buffer should remain writable")
+    T.expect_eq(vim.bo.modifiable, true, "session file buffer should remain modifiable")
+    T.expect_eq(vim.b.patchmarks_attached, true, "session file buffer should be attached")
+  end
+
+  local function run_buffer_eligibility_test()
+    local repo = setup_repo()
+    vim.cmd.cd(repo)
+
+    T.expect(patchmarks.open() == true, "PatchmarksOpen should succeed for eligibility test")
+    T.expect_eq(vim.b.patchmarks_attached, true, "opened session file should be attached")
+
+    H.write_file(vim.fs.joinpath(repo, "outside.txt"), { "not", "changed" })
+    vim.cmd.edit(vim.fn.fnameescape(vim.fs.joinpath(repo, "outside.txt")))
+    vim.api.nvim_exec_autocmds("BufEnter", { buffer = 0 })
+    T.expect_eq(vim.b.patchmarks_attached, nil, "non-session file should not be attached")
+    T.expect_eq(
+      vim.b.patchmarks_keymaps_applied,
+      nil,
+      "non-session file should not receive keymaps"
+    )
+
+    vim.cmd.enew()
+    vim.bo.buftype = "nofile"
+    vim.api.nvim_buf_set_name(0, vim.fs.joinpath(repo, "tracked.txt"))
+    vim.api.nvim_exec_autocmds("BufEnter", { buffer = 0 })
+    T.expect_eq(vim.b.patchmarks_attached, nil, "nofile buffer should not be attached")
+    T.expect_eq(vim.b.patchmarks_keymaps_applied, nil, "nofile buffer should not receive keymaps")
   end
 
   local function run_refresh_test()
@@ -136,6 +161,7 @@ return function()
   end
 
   run_open_flow_test()
+  run_buffer_eligibility_test()
   run_refresh_test()
   run_quickfix_order_stability_test()
   T.finish()

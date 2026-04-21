@@ -84,7 +84,8 @@ Defaults:
 
 ## Buffer-Local Keymaps
 
-These mappings exist only in Patchmarks review buffers.
+These mappings exist only in normal file buffers that belong to the active
+Patchmarks session.
 
 - `<localleader>a`
   Add an annotation on the current line, or on the current visual line range.
@@ -114,6 +115,12 @@ These mappings exist only in Patchmarks review buffers.
 5. Run `:PatchmarksExport` to copy a compact review block for your agent.
 6. After the agent makes more Git changes, run `:PatchmarksOpen` to start a fresh round automatically if the last review was already exported.
 7. Use `:PatchmarksNew` when you want to force a fresh round yourself.
+
+Patchmarks does not make source buffers read-only. Session files remain normal
+editable file buffers, so you can keep using tools like `gitsigns.nvim`,
+`mini.diff`, or Fugitive for hunk navigation and staging. Patchmarks stays
+inactive in non-file buffers such as quickfix, help, terminal, prompt,
+`nofile`, `acwrite`, and plugin-owned buffers.
 
 ## Annotation Editor
 

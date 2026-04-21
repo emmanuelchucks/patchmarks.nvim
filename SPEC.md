@@ -80,7 +80,7 @@ When the user starts a session:
 3. It builds a quickfix list containing those files.
 4. It opens the first file in the source window.
 5. It places the cursor on the first changed line for that file when possible.
-6. It marks the source buffer read-only and attaches Patchmarks keymaps.
+6. It attaches Patchmarks keymaps and annotation extmarks to eligible source buffers.
 
 During the session:
 
@@ -138,7 +138,7 @@ v1 intentionally keeps configuration narrow.
 
 - `preview.trigger`
   - `"manual"` by default
-  - `"cursorhold"` enables preview-on-hover for annotations in review buffers
+  - `"cursorhold"` enables preview-on-hover for annotations in attached session buffers
 - `preview.width`
   - preview float width
 - `preview.height`
@@ -276,14 +276,26 @@ Patchmarks uses the real file buffer.
 
 ### Buffer Constraints
 
-- `modifiable = false`
-- `readonly = true`
+- source buffers remain ordinary editable file buffers
+- Patchmarks only attaches to buffers with `buftype == ""`
+- Patchmarks only attaches when the normalized file path belongs to the active session
 - no synthetic diff text is inserted into the buffer
 - existing syntax highlighting remains untouched
 
-### Why Read-Only
+### Non-File Buffers
 
-The buffer exists for review and annotation, not editing. This avoids accidental file changes during review.
+Patchmarks is inactive in synthetic or plugin-owned buffers:
+
+- quickfix
+- help
+- terminal
+- prompt
+- `nofile`
+- `acwrite`
+- Fugitive status/diff/index buffers
+- other plugin-owned buffers without a stable real file identity
+
+Annotations target source files, not Git control surfaces or synthetic views.
 
 ### Interaction With External Diff Plugins
 
@@ -457,7 +469,7 @@ Format:
 
 ## Buffer-Local Keymaps
 
-These mappings exist only in Patchmarks source buffers.
+These mappings exist only in normal file buffers that belong to the active Patchmarks session.
 
 - `<localleader>a`
   - Add annotation on current line or visual selection.
@@ -741,7 +753,7 @@ Good slices combine enough command, state, rendering, and test coverage to let t
 
 - canonical name: `patchmarks.nvim`
 - file-oriented quickfix list
-- real source buffer, read-only
+- real source buffer, editable
 - optional coexistence with `gitsigns.nvim` or `mini.diff`
 - line-based non-overlapping annotations
 - manual annotation preview by default

@@ -46,14 +46,9 @@ return function()
       H.require_value(storage.path(current.repo_root), "session path should exist")
     T.expect(vim.fn.filereadable(session_path) == 1, "session should be persisted")
 
-    vim.b.patchmarks_saved_readonly = true
-    vim.b.patchmarks_saved_modifiable = false
-    vim.bo.readonly = true
-    vim.bo.modifiable = false
     T.expect(patchmarks.close() == true, "PatchmarksClose should succeed")
-    T.expect_eq(vim.b.patchmarks_review, nil, "close should remove review marker")
-    T.expect_eq(vim.bo.modifiable, false, "close should restore original modifiable")
-    T.expect_eq(vim.bo.readonly, true, "close should restore original readonly")
+    T.expect_eq(vim.b.patchmarks_attached, nil, "close should remove attachment marker")
+    T.expect_eq(vim.b.patchmarks_keymaps_applied, nil, "close should remove keymaps")
 
     local qf = vim.fn.getqflist({ winid = 1 })
     T.expect_eq(qf.winid, 0, "close should close quickfix window")

@@ -75,7 +75,8 @@ Requirements:
 ==============================================================================
 4. Keymaps                                                  *patchmarks-maps*
 
-These mappings are buffer-local to Patchmarks review buffers.
+These mappings are buffer-local to normal file buffers that belong to the
+active Patchmarks session.
 
 `<localleader>a`
   Add an annotation on the current line or on the current visual line range.
@@ -116,6 +117,10 @@ These mappings are buffer-local to Patchmarks review buffers.
    starts a fresh round automatically.
 7. Run |:PatchmarksNew| when you want to force a fresh round.
 
+Patchmarks does not make source buffers read-only. Session files remain normal
+editable file buffers, so existing tools like gitsigns.nvim, mini.diff, or
+Fugitive can keep handling hunk navigation and staging.
+
 ==============================================================================
 6. Configuration                                          *patchmarks-config*
 
@@ -147,6 +152,7 @@ Supported in v1:
 
 - modified, added, renamed, copied, and untracked files
 - single-line and line-range annotations
+- ordinary editable source buffers
 
 Not supported in v1:
 
@@ -154,6 +160,9 @@ Not supported in v1:
 - overlapping annotations
 - automatic carry-forward across rounds
 - agent-specific integration
+
+Patchmarks is inactive in non-file buffers such as quickfix, help, terminal,
+prompt, nofile, acwrite, and plugin-owned buffers.
 
 Annotation editor behavior:
 
