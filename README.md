@@ -2,10 +2,9 @@
 
 `patchmarks.nvim` is a file-oriented Git review plugin for Neovim.
 
-It opens the current changed-file set into normal source buffers, uses the
-built-in quickfix list for file navigation, and lets you attach freeform
-line or line-range annotations that can be exported back to an LLM coding
-agent.
+It starts a review session for the current Git change set and lets you attach
+freeform line or line-range annotations in normal file buffers. Those
+annotations can be exported back to an LLM coding agent.
 
 Patchmarks does not render diffs itself. It is designed to coexist with your
 existing diff workflow, whether that is `gitsigns.nvim`, `mini.diff`, or
@@ -69,16 +68,18 @@ Defaults:
 
 ## Commands
 
-- `:PatchmarksOpen`
-  Open the current review session, or create one from the current Git state.
+- `:PatchmarksStart`
+  Start or resume a Patchmarks session for the current Git worktree.
+- `:PatchmarksFiles`
+  Open a native quickfix list for the active session's changed files.
 - `:PatchmarksRefresh`
   Explicitly refresh changed-file metadata without discarding annotations.
 - `:PatchmarksNew`
   Start a fresh round and discard existing annotations.
 - `:PatchmarksExport`
   Export annotations to registers and clipboard when available.
-- `:PatchmarksClose`
-  Close Patchmarks UI state but keep the session persisted.
+- `:PatchmarksStop`
+  Stop Patchmarks UI state but keep the session persisted.
 - `:PatchmarksDiscard`
   Delete the persisted session and clear in-memory state.
 
@@ -108,13 +109,14 @@ Patchmarks session.
 
 ## Workflow
 
-1. Run `:PatchmarksOpen` inside a Git worktree.
-2. Use quickfix to move between changed files.
+1. Open a changed source file normally.
+2. Run `:PatchmarksStart` inside the Git worktree.
 3. Add annotations with `<localleader>a`.
 4. Edit or preview them as needed.
-5. Run `:PatchmarksExport` to copy a compact review block for your agent.
-6. After the agent makes more Git changes, run `:PatchmarksOpen` to start a fresh round automatically if the last review was already exported.
-7. Use `:PatchmarksNew` when you want to force a fresh round yourself.
+5. Optionally run `:PatchmarksFiles` if you want a native quickfix list of changed files.
+6. Run `:PatchmarksExport` to copy a compact review block for your agent.
+7. After the agent makes more Git changes, run `:PatchmarksStart` to start a fresh round automatically if the last review was already exported.
+8. Use `:PatchmarksNew` when you want to force a fresh round yourself.
 
 Patchmarks does not make source buffers read-only. Session files remain normal
 editable file buffers, so you can keep using tools like `gitsigns.nvim`,
@@ -147,10 +149,10 @@ Patchmarks persists the active session under the repo Git dir:
 .git/patchmarks/current.json
 ```
 
-This lets `:PatchmarksOpen` restore a session after restarting Neovim.
+This lets `:PatchmarksStart` restore a session after restarting Neovim.
 
 If the session was already exported and Git has changed since that export,
-`PatchmarksOpen` starts a fresh round automatically instead of restoring the
+`PatchmarksStart` starts a fresh round automatically instead of restoring the
 old annotations.
 
 ## Scope

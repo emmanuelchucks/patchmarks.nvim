@@ -9,11 +9,9 @@
 
 Patchmarks is a file-oriented review plugin for Neovim.
 
-It opens the current Git change set as:
-
-- a normal source buffer showing the real file with its usual syntax highlighting
-- a quickfix list containing the changed files
-- a local annotation layer for adding, editing, deleting, previewing, and exporting review comments
+It starts a review session for the current Git change set and attaches a local
+annotation layer to eligible normal file buffers. Users may optionally open a
+native quickfix list for changed-file navigation.
 
 Patchmarks does **not** implement Git diff rendering itself. It is designed to coexist with existing diff plugins such as `gitsigns.nvim` or `mini.diff`. Those plugins remain responsible for signs, inline hunk preview, staging, unstaging, and other Git-facing visuals. Patchmarks only owns:
 
@@ -33,7 +31,7 @@ It should lean on:
 - Neovim built-ins before custom infrastructure
 - Git CLI before custom repository logic
 - existing diff plugins before custom diff UI
-- normal quickfix behavior before custom list UIs
+- optional normal quickfix behavior before custom list UIs
 
 Patchmarks should only implement the narrow layer that is actually unique:
 
@@ -77,14 +75,15 @@ When the user starts a session:
 
 1. Patchmarks finds the Git repo root.
 2. It computes the current changed-file set.
-3. It builds a quickfix list containing those files.
-4. It opens the first file in the source window.
-5. It places the cursor on the first changed line for that file when possible.
-6. It attaches Patchmarks keymaps and annotation extmarks to eligible source buffers.
+3. It creates or restores the persisted session.
+4. It attaches Patchmarks keymaps and annotation extmarks to the current buffer if that buffer is an eligible source buffer.
+5. It registers buffer-entry hooks so eligible source buffers attach when the user opens them normally.
+6. It does not open quickfix, jump files, or move the cursor.
 
 During the session:
 
-- the user moves between files using normal quickfix motions and commands
+- the user opens and moves between files however they normally do
+- the user may run `:PatchmarksFiles` when they want a native quickfix list of changed files
 - the user uses Patchmarks mappings to annotate line ranges
 - the user may keep using their existing diff plugin to inspect or stage hunks
 - Patchmarks only refreshes when the user explicitly asks it to
@@ -94,7 +93,7 @@ At export time:
 - Patchmarks produces a compact text block
 - it copies that block to Neovim registers and the system clipboard when available
 - it keeps the current session intact until the user explicitly starts a new round or discards it
-- if the review was exported and Git later changes, reopening Patchmarks starts a fresh round automatically
+- if the review was exported and Git later changes, starting Patchmarks starts a fresh round automatically
 
 ## Why File-Oriented Instead of Hunk-Oriented
 
@@ -148,17 +147,20 @@ v1 intentionally keeps configuration narrow.
 
 ### Commands
 
-- `:PatchmarksOpen`
-  - Open the current review session if one exists.
+- `:PatchmarksStart`
+  - Start the current review session if one exists.
   - Otherwise create a new session from the current Git state.
+  - Do not open quickfix, switch buffers, or move the cursor.
+- `:PatchmarksFiles`
+  - Populate and open a native quickfix list for the active session's changed files.
 - `:PatchmarksNew`
   - Discard any existing session and start a fresh round from the current Git state.
 - `:PatchmarksRefresh`
-  - Refresh changed-file metadata and quickfix contents without discarding annotations.
+  - Refresh changed-file metadata without discarding annotations.
 - `:PatchmarksExport`
   - Export the current annotations to registers and clipboard.
-- `:PatchmarksClose`
-  - Close Patchmarks UI state but keep the session persisted.
+- `:PatchmarksStop`
+  - Stop Patchmarks UI state but keep the session persisted.
 - `:PatchmarksDiscard`
   - Delete the active session and all annotations for it.
 
@@ -168,8 +170,8 @@ v1 intentionally keeps configuration narrow.
 - Session state is persisted under `.git/patchmarks/current.json`.
 - Starting a new round with `:PatchmarksNew` discards old annotations entirely.
 - Exporting does not clear the session automatically.
-- If Neovim crashes or closes, reopening with `:PatchmarksOpen` restores the session.
-- If the session was exported and Git has changed since that export, `:PatchmarksOpen` starts a fresh round instead of restoring old annotations.
+- If Neovim crashes or closes, restarting with `:PatchmarksStart` restores the session.
+- If the session was exported and Git has changed since that export, `:PatchmarksStart` starts a fresh round instead of restoring old annotations.
 
 ## Change Discovery
 
@@ -223,14 +225,14 @@ For files where no diff hunk can be parsed but the file exists:
 
 ## Quickfix Design
 
-Patchmarks uses Neovim's normal built-in quickfix list.
+Patchmarks can use Neovim's normal built-in quickfix list when explicitly requested.
 
 It does not implement a custom quickfix UI.
 
 Patchmarks only:
 
 - populates the list with changed files via `setqflist()`
-- opens it with normal quickfix commands
+- opens it from `:PatchmarksFiles`
 - updates the list title and item text as session metadata changes
 
 Each quickfix item represents one file, not one hunk.
@@ -499,9 +501,9 @@ These mappings exist only in normal file buffers that belong to the active Patch
 
 ### Across Files
 
-Patchmarks relies on normal quickfix navigation for file traversal.
+Patchmarks does not own file traversal by default. Users open files however they normally do.
 
-This preserves existing Neovim behavior and user muscle memory.
+When requested, `:PatchmarksFiles` provides a native quickfix list for changed-file traversal.
 
 ## Platform Choices
 
@@ -532,8 +534,7 @@ Patchmarks refresh is metadata-oriented, not destructive.
 
 - changed-file set from Git
 - first changed line per file
-- quickfix title and item labels
-- current buffer reload if the file changed on disk
+- quickfix title and item labels if the Patchmarks file list is active
 
 ### What Refresh Does Not Do
 
@@ -572,13 +573,13 @@ Patchmarks treats export as the handoff boundary to the agent.
 
 If the current session was exported and Git later changes:
 
-- reopening with `:PatchmarksOpen` starts a fresh round automatically
+- starting with `:PatchmarksStart` starts a fresh round automatically
 - old annotations from the exported round are not restored
 - Patchmarks shows a short notice explaining why a fresh round was started
 
 If the session was exported but Git is unchanged:
 
-- `:PatchmarksOpen` restores the existing session normally
+- `:PatchmarksStart` restores the existing session normally
 
 There is no automatic annotation carry-forward in v1.
 
@@ -620,7 +621,7 @@ notes: <annotation-count>
 
 ### Export Ordering
 
-1. files in quickfix order
+1. files in session order
 2. annotations in ascending line order within each file
 
 ### Export Omissions
@@ -700,7 +701,7 @@ Patchmarks should avoid interfering with provider signs, overlays, or buffer att
 ### External File Removal During Session
 
 - if the file no longer exists, keep the annotation data in the session
-- quickfix entry remains but opening it shows a clear error
+- file-list entry remains if `:PatchmarksFiles` is used, but opening it shows a clear error
 
 ## Performance Constraints
 
@@ -722,7 +723,6 @@ Recommended Lua module split:
 - `patchmarks.config`
 - `patchmarks.git`
 - `patchmarks.session`
-- `patchmarks.quickfix`
 - `patchmarks.annotations`
 - `patchmarks.render`
 - `patchmarks.float`
@@ -752,7 +752,7 @@ Good slices combine enough command, state, rendering, and test coverage to let t
 ## Final Defaults
 
 - canonical name: `patchmarks.nvim`
-- file-oriented quickfix list
+- optional file-oriented quickfix list
 - real source buffer, editable
 - optional coexistence with `gitsigns.nvim` or `mini.diff`
 - line-based non-overlapping annotations

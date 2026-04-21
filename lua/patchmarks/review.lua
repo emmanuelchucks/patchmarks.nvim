@@ -6,6 +6,7 @@ local render = require("patchmarks.render")
 local M = {}
 
 local augroup = vim.api.nvim_create_augroup("PatchmarksReview", { clear = true })
+local files_active = false
 
 local function notification(msg, level)
   vim.notify(msg, level or vim.log.levels.INFO, { title = "Patchmarks" })
@@ -102,11 +103,12 @@ function M.close(session)
   vim.api.nvim_clear_autocmds({ group = augroup })
   local editor = require("patchmarks.editor")
 
-  if not editor.request_close("closing Patchmarks") then
+  if not editor.request_close("stopping Patchmarks") then
     return false
   end
 
   preview.close()
+  files_active = false
 
   if session ~= nil then
     for _, file in ipairs(session.files) do
@@ -117,7 +119,6 @@ function M.close(session)
     end
   end
 
-  pcall(vim.cmd, "cclose")
   return true
 end
 
@@ -193,28 +194,24 @@ function M.refresh_quickfix(session, preferred_path)
   return preferred_index
 end
 
-function M.open(session, opts)
-  opts = opts or {}
+function M.refresh_files(session, preferred_path)
+  if not files_active then
+    return nil
+  end
 
-  local preferred_path = opts.preferred_path
-  local preferred_cursor = opts.preferred_cursor
-  local index = M.refresh_quickfix(session, preferred_path)
+  return M.refresh_quickfix(session, preferred_path)
+end
+
+function M.open_files(session)
+  files_active = true
+  local index = M.refresh_quickfix(session)
   if index == 0 then
     return false
   end
 
   local file = session.files[index]
   vim.cmd.edit(vim.fn.fnameescape(file.absolute_path))
-  local target_cursor = { file.first_changed_line, 0 }
-  if preferred_path ~= nil and preferred_cursor ~= nil and file.absolute_path == preferred_path then
-    local max_line = math.max(vim.api.nvim_buf_line_count(0), 1)
-    target_cursor = {
-      math.min(preferred_cursor[1], max_line),
-      preferred_cursor[2],
-    }
-  end
-
-  vim.api.nvim_win_set_cursor(0, target_cursor)
+  vim.api.nvim_win_set_cursor(0, { file.first_changed_line, 0 })
   M.attach_buffer(session, 0)
   vim.cmd("botright copen")
   vim.cmd("wincmd p")

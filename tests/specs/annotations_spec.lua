@@ -29,6 +29,10 @@ return function()
     return tmp
   end
 
+  local function edit_tracked(repo)
+    vim.cmd.edit(vim.fn.fnameescape(vim.fs.joinpath(repo, "tracked.txt")))
+  end
+
   local function open_editor_and_save(body)
     local state = H.require_value(editor.state, "editor state should exist")
     T.expect(editor.is_open(), "editor should be open")
@@ -59,17 +63,18 @@ return function()
   local function run_annotation_flow_test()
     local repo = setup_repo()
     vim.cmd.cd(repo)
+    edit_tracked(repo)
 
-    local ok = patchmarks.open()
-    T.expect(ok == true, "PatchmarksOpen should succeed")
+    local ok = patchmarks.start()
+    T.expect(ok == true, "PatchmarksStart should succeed")
     T.expect_eq(
       vim.api.nvim_buf_get_name(0),
       vim.uv.fs_realpath(vim.fs.joinpath(repo, "tracked.txt")),
-      "tracked file should open"
+      "tracked file should stay open"
     )
     T.expect_eq(vim.b.patchmarks_keymaps_applied, true, "review keymaps should be applied")
 
-    local current = H.require_value(session.get(), "session should exist after open")
+    local current = H.require_value(session.get(), "session should exist after start")
     local session_path =
       H.require_value(storage.path(current.repo_root), "session path should exist")
     T.expect(vim.fn.filereadable(session_path) == 1, "session JSON should be written on open")
@@ -92,10 +97,6 @@ return function()
     local extmarks = vim.api.nvim_buf_get_extmarks(0, render.ns, 0, -1, {})
     T.expect(#extmarks > 0, "annotation rendering should place extmarks")
 
-    local qf = vim.fn.getqflist({ items = 1, title = 1 })
-    T.expect(qf.title:match("%(1 files, 1 notes%)"), "quickfix title should include note count")
-    T.expect(qf.items[1].text:match("%(1%)"), "quickfix text should include file note count")
-
     local persisted = H.decode_json(session_path)
     T.expect_eq(
       #persisted.files["tracked.txt"].annotations,
@@ -117,8 +118,8 @@ return function()
     )
 
     session.clear()
-    local reopened = patchmarks.open()
-    T.expect(reopened == true, "PatchmarksOpen should restore persisted session")
+    local reopened = patchmarks.start()
+    T.expect(reopened == true, "PatchmarksStart should restore persisted session")
     current = H.require_value(session.get(), "session should exist after reopen")
     file = H.require_value(session.find_file(current, "tracked.txt"), "tracked file should exist")
     T.expect_eq(#file.annotations, 2, "annotations should restore from persisted session")
@@ -140,8 +141,9 @@ return function()
   local function run_empty_body_semantics_test()
     local repo = setup_repo()
     vim.cmd.cd(repo)
+    edit_tracked(repo)
 
-    T.expect(patchmarks.open() == true, "PatchmarksOpen should succeed for empty-body test")
+    T.expect(patchmarks.start() == true, "PatchmarksStart should succeed for empty-body test")
 
     vim.api.nvim_win_set_cursor(0, { 2, 0 })
     annotations.add_current()
@@ -187,8 +189,9 @@ return function()
   local function run_visual_range_annotation_test()
     local repo = setup_repo()
     vim.cmd.cd(repo)
+    edit_tracked(repo)
 
-    T.expect(patchmarks.open() == true, "PatchmarksOpen should succeed for visual-range test")
+    T.expect(patchmarks.start() == true, "PatchmarksStart should succeed for visual-range test")
 
     vim.cmd("normal! 2GVj")
     annotations.add_current()
@@ -209,10 +212,11 @@ return function()
   local function run_out_of_range_restore_test()
     local repo = setup_repo()
     vim.cmd.cd(repo)
+    edit_tracked(repo)
 
     T.expect(
-      patchmarks.open() == true,
-      "PatchmarksOpen should succeed for out-of-range restore test"
+      patchmarks.start() == true,
+      "PatchmarksStart should succeed for out-of-range restore test"
     )
     local current = H.require_value(session.get(), "session should exist for out-of-range restore")
     local session_path =
@@ -249,8 +253,8 @@ return function()
 
     session.clear()
     T.expect(
-      patchmarks.open() == true,
-      "PatchmarksOpen should reopen even with out-of-range annotations"
+      patchmarks.start() == true,
+      "PatchmarksStart should reopen even with out-of-range annotations"
     )
     current = H.require_value(session.get(), "session should exist after out-of-range reopen")
     local file =

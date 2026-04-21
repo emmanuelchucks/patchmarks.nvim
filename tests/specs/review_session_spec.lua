@@ -31,12 +31,15 @@ return function()
     return tmp
   end
 
-  local function run_open_flow_test()
+  local function run_start_flow_test()
     local repo = setup_repo()
     vim.cmd.cd(repo)
+    vim.cmd.edit(vim.fn.fnameescape(vim.fs.joinpath(repo, "tracked.txt")))
+    vim.api.nvim_win_set_cursor(0, { 3, 0 })
+    local starting_buf = vim.api.nvim_get_current_buf()
 
-    local ok = patchmarks.open()
-    T.expect(ok == true, "PatchmarksOpen should succeed in a git repo with changes")
+    local ok = patchmarks.start()
+    T.expect(ok == true, "PatchmarksStart should succeed in a git repo with changes")
 
     local current = H.require_value(session.get(), "session should be stored")
     T.expect_eq(current.repo_root, H.realpath(repo), "session repo_root")
@@ -47,8 +50,23 @@ return function()
       "git order should be preserved with deleted file skipped"
     )
 
+    T.expect_eq(vim.api.nvim_get_current_buf(), starting_buf, "start should not switch buffers")
+    T.expect_eq(vim.api.nvim_win_get_cursor(0)[1], 3, "start should not move the cursor")
+    T.expect_eq(vim.fn.getqflist({ winid = 1 }).winid, 0, "start should not open quickfix")
+    T.expect_eq(vim.bo.readonly, false, "session file buffer should remain writable")
+    T.expect_eq(vim.bo.modifiable, true, "session file buffer should remain modifiable")
+    T.expect_eq(vim.b.patchmarks_attached, true, "session file buffer should be attached")
+  end
+
+  local function run_files_flow_test()
+    local repo = setup_repo()
+    vim.cmd.cd(repo)
+
+    T.expect(patchmarks.start() == true, "PatchmarksStart should succeed before Files")
+    T.expect(patchmarks.files() == true, "PatchmarksFiles should open file list")
+
     local qf = vim.fn.getqflist({ title = 1, items = 1, idx = 1, size = 1, winid = 1 })
-    T.expect(qf.winid > 0, "quickfix window should be open")
+    T.expect(qf.winid > 0, "files command should open quickfix")
     T.expect_eq(qf.idx, 1, "quickfix should focus the first item")
     T.expect_eq(qf.size, 3, "quickfix item count")
     T.expect(qf.title:match("Patchmarks:"), "quickfix title should be set")
@@ -65,16 +83,14 @@ return function()
       qf.items[1].lnum,
       "cursor should land on first changed line"
     )
-    T.expect_eq(vim.bo.readonly, false, "session file buffer should remain writable")
-    T.expect_eq(vim.bo.modifiable, true, "session file buffer should remain modifiable")
-    T.expect_eq(vim.b.patchmarks_attached, true, "session file buffer should be attached")
   end
 
   local function run_buffer_eligibility_test()
     local repo = setup_repo()
     vim.cmd.cd(repo)
+    vim.cmd.edit(vim.fn.fnameescape(vim.fs.joinpath(repo, "tracked.txt")))
 
-    T.expect(patchmarks.open() == true, "PatchmarksOpen should succeed for eligibility test")
+    T.expect(patchmarks.start() == true, "PatchmarksStart should succeed for eligibility test")
     T.expect_eq(vim.b.patchmarks_attached, true, "opened session file should be attached")
 
     H.write_file(vim.fs.joinpath(repo, "outside.txt"), { "not", "changed" })
@@ -89,7 +105,7 @@ return function()
 
     vim.cmd.enew()
     vim.bo.buftype = "nofile"
-    vim.api.nvim_buf_set_name(0, vim.fs.joinpath(repo, "tracked.txt"))
+    vim.api.nvim_buf_set_name(0, vim.fs.joinpath(repo, "untracked.txt"))
     vim.api.nvim_exec_autocmds("BufEnter", { buffer = 0 })
     T.expect_eq(vim.b.patchmarks_attached, nil, "nofile buffer should not be attached")
     T.expect_eq(vim.b.patchmarks_keymaps_applied, nil, "nofile buffer should not receive keymaps")
@@ -98,16 +114,18 @@ return function()
   local function run_refresh_test()
     local repo = setup_repo()
     vim.cmd.cd(repo)
+    pcall(vim.cmd, "cclose")
+    vim.cmd.edit(vim.fn.fnameescape(vim.fs.joinpath(repo, "tracked.txt")))
 
-    patchmarks.open()
+    patchmarks.start()
     H.write_file(vim.fs.joinpath(repo, "second_untracked.txt"), { "another", "file" })
 
     local ok = patchmarks.refresh()
     T.expect(ok == true, "PatchmarksRefresh should succeed for the active repo")
 
-    local qf = vim.fn.getqflist({ items = 1, title = 1 })
-    T.expect_eq(#qf.items, 4, "refresh should pick up newly changed files")
-    T.expect(qf.title:match("%(4 files, 0 notes%)"), "refresh should update title counts")
+    local current = H.require_value(session.get(), "session should exist after refresh")
+    T.expect_eq(#current.files, 4, "refresh should pick up newly changed files")
+    T.expect_eq(vim.fn.getqflist({ winid = 1 }).winid, 0, "refresh should not open quickfix")
   end
 
   local function run_quickfix_order_stability_test()
@@ -115,8 +133,12 @@ return function()
     vim.cmd.cd(repo)
 
     T.expect(
-      patchmarks.open() == true,
-      "PatchmarksOpen should succeed for quickfix order stability"
+      patchmarks.start() == true,
+      "PatchmarksStart should succeed for quickfix order stability"
+    )
+    T.expect(
+      patchmarks.files() == true,
+      "PatchmarksFiles should succeed for quickfix order stability"
     )
     local before = vim.tbl_map(function(item)
       return item.user_data.path
@@ -160,7 +182,8 @@ return function()
     )
   end
 
-  run_open_flow_test()
+  run_start_flow_test()
+  run_files_flow_test()
   run_buffer_eligibility_test()
   run_refresh_test()
   run_quickfix_order_stability_test()

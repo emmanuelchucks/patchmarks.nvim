@@ -4,10 +4,16 @@ end
 
 vim.g.loaded_patchmarks = 1
 
-vim.api.nvim_create_user_command("PatchmarksOpen", function()
-  require("patchmarks").open()
+vim.api.nvim_create_user_command("PatchmarksStart", function()
+  require("patchmarks").start()
 end, {
-  desc = "Open a Patchmarks review session",
+  desc = "Start or resume a Patchmarks session",
+})
+
+vim.api.nvim_create_user_command("PatchmarksFiles", function()
+  require("patchmarks").files()
+end, {
+  desc = "Open the active Patchmarks file list",
 })
 
 vim.api.nvim_create_user_command("PatchmarksRefresh", function()
@@ -22,10 +28,10 @@ end, {
   desc = "Start a fresh Patchmarks review round",
 })
 
-vim.api.nvim_create_user_command("PatchmarksClose", function()
-  require("patchmarks").close()
+vim.api.nvim_create_user_command("PatchmarksStop", function()
+  require("patchmarks").stop()
 end, {
-  desc = "Close Patchmarks UI state and keep the session persisted",
+  desc = "Stop Patchmarks UI state and keep the session persisted",
 })
 
 vim.api.nvim_create_user_command("PatchmarksDiscard", function()

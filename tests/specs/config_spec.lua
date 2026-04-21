@@ -24,6 +24,10 @@ return function()
     return tmp
   end
 
+  local function edit_tracked(repo)
+    vim.cmd.edit(vim.fn.fnameescape(vim.fs.joinpath(repo, "tracked.txt")))
+  end
+
   local function save_editor(body)
     local state = require("patchmarks.editor").state
     T.expect(state ~= nil, "editor should be open")
@@ -51,8 +55,9 @@ return function()
 
     local repo = setup_repo()
     vim.cmd.cd(repo)
+    edit_tracked(repo)
 
-    T.expect(patchmarks.open() == true, "PatchmarksOpen should succeed for cursorhold preview")
+    T.expect(patchmarks.start() == true, "PatchmarksStart should succeed for cursorhold preview")
     vim.api.nvim_win_set_cursor(0, { 2, 0 })
     annotations.add_current()
     save_editor("Hover note.")

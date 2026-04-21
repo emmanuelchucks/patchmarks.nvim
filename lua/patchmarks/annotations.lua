@@ -104,9 +104,10 @@ end
 
 local function refresh_views(current)
   local preferred_path = nil
+  local render_bufnr = vim.api.nvim_get_current_buf()
   if editor.state ~= nil and vim.api.nvim_win_is_valid(editor.state.source_winid) then
-    local source_buf = vim.api.nvim_win_get_buf(editor.state.source_winid)
-    local source_path = vim.api.nvim_buf_get_name(source_buf)
+    render_bufnr = vim.api.nvim_win_get_buf(editor.state.source_winid)
+    local source_path = vim.api.nvim_buf_get_name(render_bufnr)
     if source_path ~= "" then
       preferred_path = vim.uv.fs_realpath(source_path) or vim.fs.normalize(source_path)
     end
@@ -121,8 +122,8 @@ local function refresh_views(current)
     end
   end
 
-  require("patchmarks.review").refresh_quickfix(current, preferred_path)
-  render.render_buffer(0)
+  require("patchmarks.review").refresh_files(current, preferred_path)
+  render.render_buffer(render_bufnr)
 end
 
 local function remove_annotation(file, annotation_id)
