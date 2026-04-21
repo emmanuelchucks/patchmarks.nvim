@@ -29,27 +29,32 @@ local function in_session(session, path)
     return false
   end
 
-  return session.paths[vim.fs.normalize(path)] ~= nil
+  local normalized = vim.uv.fs_realpath(path) or vim.fs.normalize(path)
+  return session.paths[normalized] ~= nil
 end
 
-function M.apply_review_buffer(bufnr)
+function M.is_session_buffer(session, bufnr)
   if not vim.api.nvim_buf_is_valid(bufnr) then
-    return
+    return false
   end
 
-  if vim.b[bufnr].patchmarks_saved_modifiable == nil then
-    vim.b[bufnr].patchmarks_saved_modifiable = vim.bo[bufnr].modifiable
+  if vim.bo[bufnr].buftype ~= "" then
+    return false
   end
 
-  if vim.b[bufnr].patchmarks_saved_readonly == nil then
-    vim.b[bufnr].patchmarks_saved_readonly = vim.bo[bufnr].readonly
+  return in_session(session, vim.api.nvim_buf_get_name(bufnr))
+end
+
+function M.attach_buffer(session, bufnr)
+  if not M.is_session_buffer(session, bufnr) then
+    M.release_buffer(bufnr)
+    return false
   end
 
-  vim.bo[bufnr].modifiable = false
-  vim.bo[bufnr].readonly = true
-  vim.b[bufnr].patchmarks_review = true
+  vim.b[bufnr].patchmarks_attached = true
   keymaps.apply(bufnr)
   render.render_buffer(bufnr)
+  return true
 end
 
 function M.attach(session)
@@ -60,18 +65,14 @@ function M.attach(session)
   vim.api.nvim_create_autocmd("BufEnter", {
     group = augroup,
     callback = function(args)
-      local path = vim.api.nvim_buf_get_name(args.buf)
-      if in_session(session, path) then
-        M.apply_review_buffer(args.buf)
-      end
+      M.attach_buffer(session, args.buf)
     end,
   })
 
   vim.api.nvim_create_autocmd("CursorHold", {
     group = augroup,
     callback = function(args)
-      local path = vim.api.nvim_buf_get_name(args.buf)
-      if not in_session(session, path) then
+      if not M.is_session_buffer(session, args.buf) then
         preview.close()
         return
       end
@@ -83,30 +84,18 @@ function M.attach(session)
       require("patchmarks.annotations").cursorhold_preview()
     end,
   })
+
+  M.attach_buffer(session, vim.api.nvim_get_current_buf())
 end
 
-function M.release_review_buffer(bufnr)
+function M.release_buffer(bufnr)
   if not vim.api.nvim_buf_is_valid(bufnr) then
     return
   end
 
   render.clear_buffer(bufnr)
   keymaps.clear(bufnr)
-
-  local saved_readonly = vim.b[bufnr].patchmarks_saved_readonly
-  local saved_modifiable = vim.b[bufnr].patchmarks_saved_modifiable
-
-  if saved_readonly ~= nil then
-    vim.bo[bufnr].readonly = saved_readonly
-  end
-
-  if saved_modifiable ~= nil then
-    vim.bo[bufnr].modifiable = saved_modifiable
-  end
-
-  vim.b[bufnr].patchmarks_review = nil
-  vim.b[bufnr].patchmarks_saved_readonly = nil
-  vim.b[bufnr].patchmarks_saved_modifiable = nil
+  vim.b[bufnr].patchmarks_attached = nil
 end
 
 function M.close(session)
@@ -123,7 +112,7 @@ function M.close(session)
     for _, file in ipairs(session.files) do
       local bufnr = vim.fn.bufnr(file.absolute_path, false)
       if bufnr > 0 and vim.api.nvim_buf_is_valid(bufnr) then
-        M.release_review_buffer(bufnr)
+        M.release_buffer(bufnr)
       end
     end
   end
@@ -226,7 +215,7 @@ function M.open(session, opts)
   end
 
   vim.api.nvim_win_set_cursor(0, target_cursor)
-  M.apply_review_buffer(0)
+  M.attach_buffer(session, 0)
   vim.cmd("botright copen")
   vim.cmd("wincmd p")
   M.attach(session)
