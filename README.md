@@ -103,9 +103,9 @@ Patchmarks session.
 - `<localleader>R`
   Start a new round.
 - `[a`
-  Jump to the previous annotation in the current file.
+  Jump to the previous annotation in the current file, wrapping to the last.
 - `]a`
-  Jump to the next annotation in the current file.
+  Jump to the next annotation in the current file, wrapping to the first.
 
 ## Workflow
 

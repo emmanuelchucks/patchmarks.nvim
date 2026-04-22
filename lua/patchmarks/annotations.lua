@@ -352,6 +352,9 @@ local function jump(direction)
         return
       end
     end
+
+    vim.api.nvim_win_set_cursor(0, { file.annotations[1].start_lnum, 0 })
+    return
   else
     for index = #file.annotations, 1, -1 do
       local annotation = file.annotations[index]
@@ -360,9 +363,10 @@ local function jump(direction)
         return
       end
     end
-  end
 
-  vim.notify("Patchmarks: no annotation in that direction", vim.log.levels.INFO)
+    vim.api.nvim_win_set_cursor(0, { file.annotations[#file.annotations].start_lnum, 0 })
+    return
+  end
 end
 
 function M.next_in_file()
