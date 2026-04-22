@@ -482,9 +482,9 @@ These mappings exist only in normal file buffers that belong to the active Patch
 - `<localleader>p`
   - Preview annotation under cursor.
 - `]a`
-  - Jump to next annotation in the current file, wrapping disabled.
+  - Jump to next annotation in the current file, wrapping to the first annotation at the end.
 - `[a`
-  - Jump to previous annotation in the current file, wrapping disabled.
+  - Jump to previous annotation in the current file, wrapping to the last annotation at the start.
 - `<localleader>x`
   - Export current session.
 - `<localleader>r`
@@ -497,7 +497,8 @@ These mappings exist only in normal file buffers that belong to the active Patch
 ### Within File
 
 - `[a` and `]a` only traverse annotations in the current file
-- if no annotation exists in the direction requested, Patchmarks shows a short notification and does nothing
+- navigation wraps within the current file
+- if no annotation exists in the current file, Patchmarks shows a short notification and does nothing
 
 ### Across Files
 

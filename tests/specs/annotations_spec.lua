@@ -209,6 +209,29 @@ return function()
     T.expect_eq(file.annotations[1].end_lnum, 3, "visual range should end on last selected line")
   end
 
+  local function run_annotation_navigation_wrap_test()
+    local repo = setup_repo()
+    vim.cmd.cd(repo)
+    edit_tracked(repo)
+
+    T.expect(patchmarks.start() == true, "PatchmarksStart should succeed for navigation test")
+
+    vim.api.nvim_win_set_cursor(0, { 2, 0 })
+    annotations.add_current()
+    open_editor_and_save("First note.")
+
+    vim.api.nvim_win_set_cursor(0, { 4, 0 })
+    annotations.add_current()
+    open_editor_and_save("Second note.")
+
+    vim.api.nvim_win_set_cursor(0, { 4, 0 })
+    annotations.next_in_file()
+    T.expect_eq(vim.api.nvim_win_get_cursor(0)[1], 2, "next annotation should wrap to first")
+
+    annotations.prev_in_file()
+    T.expect_eq(vim.api.nvim_win_get_cursor(0)[1], 4, "previous annotation should wrap to last")
+  end
+
   local function run_out_of_range_restore_test()
     local repo = setup_repo()
     vim.cmd.cd(repo)
@@ -271,6 +294,7 @@ return function()
   run_annotation_flow_test()
   run_empty_body_semantics_test()
   run_visual_range_annotation_test()
+  run_annotation_navigation_wrap_test()
   run_out_of_range_restore_test()
   T.finish()
 end
