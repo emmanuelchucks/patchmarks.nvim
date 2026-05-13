@@ -6,6 +6,10 @@ local defaults = {
     width = 72,
     height = 6,
   },
+  export = {
+    handoff = nil,
+    stop_after_handoff = true,
+  },
 }
 
 local values = vim.deepcopy(defaults)
@@ -21,6 +25,13 @@ local function normalize(opts)
   preview.width = math.max(1, math.floor(tonumber(preview.width) or defaults.preview.width))
   preview.height = math.max(1, math.floor(tonumber(preview.height) or defaults.preview.height))
   merged.preview = preview
+
+  local export = merged.export or {}
+  if export.handoff ~= nil and type(export.handoff) ~= "function" then
+    error("patchmarks: export.handoff must be a function")
+  end
+  export.stop_after_handoff = export.stop_after_handoff ~= false
+  merged.export = export
 
   return merged
 end

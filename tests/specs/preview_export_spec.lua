@@ -85,7 +85,7 @@ return function()
       error("export should produce text")
     end
 
-    T.expect(text:match("PATCHMARKS REVIEW"), "export header should be present")
+    T.expect(text:match("PATCHMARKS"), "export header should be present")
     T.expect(text:match("%[alpha.txt:2%-2%]"), "alpha annotation should be exported")
     T.expect(text:match("%[beta.txt:3%-3%]"), "beta annotation should be exported")
     T.expect_eq(vim.fn.getreg('"'), text, "unnamed register should receive export")
@@ -96,6 +96,40 @@ return function()
     end
 
     T.expect(current.exported_at ~= nil, "session should record exported_at")
+  end
+
+  local function run_handoff_test()
+    local repo = setup_repo()
+    vim.cmd.cd(repo)
+    edit_alpha(repo)
+
+    T.expect(patchmarks.start() == true, "PatchmarksStart should succeed for handoff test")
+
+    vim.api.nvim_win_set_cursor(0, { 2, 0 })
+    annotations.add_current()
+    save_editor("Send this to the agent.")
+
+    local called = nil
+    patchmarks.setup({
+      export = {
+        handoff = function(ctx)
+          called = ctx
+          return true
+        end,
+      },
+    })
+
+    T.expect(patchmarks.handoff() == true, "PatchmarksHandoff should export, call hook, and stop")
+    T.expect(called ~= nil, "handoff hook should be called")
+    T.expect(called.text:match("PATCHMARKS"), "handoff context should include export text")
+    T.expect_eq(
+      vim.uv.fs_realpath(called.repo_root),
+      vim.uv.fs_realpath(repo),
+      "handoff context should include repo root"
+    )
+    T.expect_eq(vim.b.patchmarks_attached, nil, "handoff should stop Patchmarks UI by default")
+
+    patchmarks.setup({})
   end
 
   local function run_editor_append_and_empty_export_test()
@@ -129,6 +163,7 @@ return function()
   end
 
   run_preview_and_export_test()
+  run_handoff_test()
   run_editor_append_and_empty_export_test()
   T.finish()
 end

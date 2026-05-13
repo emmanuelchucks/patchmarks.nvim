@@ -6,6 +6,7 @@ local mappings = {
   { "n", "<localleader>d" },
   { "n", "<localleader>p" },
   { "n", "<localleader>x" },
+  { "n", "<localleader>X" },
   { "n", "<localleader>r" },
   { "n", "<localleader>R" },
   { "n", "]a" },
@@ -26,6 +27,9 @@ function M.apply(bufnr)
   vim.keymap.set("n", "<localleader>p", annotations.preview_current, opts)
   vim.keymap.set("n", "<localleader>x", function()
     require("patchmarks.export").export_current()
+  end, opts)
+  vim.keymap.set("n", "<localleader>X", function()
+    require("patchmarks").handoff()
   end, opts)
   vim.keymap.set("n", "<localleader>r", function()
     require("patchmarks").refresh()

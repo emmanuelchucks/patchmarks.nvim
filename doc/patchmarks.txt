@@ -67,6 +67,11 @@ Requirements:
 :PatchmarksExport
   Export annotations to registers and clipboard when available.
 
+                                                     *:PatchmarksHandoff*
+:PatchmarksHandoff
+  Export annotations, call the configured `export.handoff(ctx)` callback, and
+  stop Patchmarks UI on success by default.
+
                                                         *:PatchmarksStop*
 :PatchmarksStop
   Stop Patchmarks UI state but keep the session persisted.
@@ -95,6 +100,9 @@ active Patchmarks session.
 
 `<localleader>x`
   Export the current review.
+
+`<localleader>X`
+  Hand off the current review with the configured export handoff callback.
 
 `<localleader>r`
   Refresh the session.
@@ -135,6 +143,10 @@ Patchmarks exposes a small setup surface: >
       width = 72,
       height = 6,
     },
+    export = {
+      handoff = nil, -- optional function(ctx) return true/false end
+      stop_after_handoff = true,
+    },
   })
 <
 Defaults:
@@ -142,6 +154,8 @@ Defaults:
 - `preview.trigger = "manual"`
 - `preview.width = 72`
 - `preview.height = 6`
+- `export.handoff = nil`
+- `export.stop_after_handoff = true`
 
 ==============================================================================
 7. Notes                                                    *patchmarks-notes*

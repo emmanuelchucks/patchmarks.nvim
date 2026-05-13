@@ -45,3 +45,9 @@ vim.api.nvim_create_user_command("PatchmarksExport", function()
 end, {
   desc = "Export the active Patchmarks review session",
 })
+
+vim.api.nvim_create_user_command("PatchmarksHandoff", function()
+  require("patchmarks").handoff()
+end, {
+  desc = "Export and hand off the active Patchmarks review session",
+})

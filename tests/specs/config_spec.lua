@@ -90,6 +90,21 @@ return function()
     )
     T.expect_eq(current.preview.width, 72, "setup with empty opts should restore default width")
     T.expect_eq(current.preview.height, 6, "setup with empty opts should restore default height")
+    T.expect_eq(current.export.stop_after_handoff, true, "setup should include export defaults")
+
+    local fn = function() end
+    local export_config = patchmarks.setup({
+      export = {
+        handoff = fn,
+        stop_after_handoff = false,
+      },
+    })
+    T.expect_eq(export_config.export.handoff, fn, "setup should apply export handoff")
+    T.expect_eq(
+      export_config.export.stop_after_handoff,
+      false,
+      "setup should allow keeping Patchmarks UI after handoff"
+    )
   end
 
   run_setup_and_cursorhold_preview_test()

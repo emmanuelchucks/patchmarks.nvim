@@ -135,6 +135,44 @@ function M.export()
   return export.export_current()
 end
 
+function M.handoff()
+  local text = export.export_current()
+  if text == nil then
+    return false
+  end
+
+  local current = session.get()
+  local export_config = config.get().export or {}
+  if export_config.handoff == nil then
+    notification("no export.handoff configured", vim.log.levels.WARN)
+    return false
+  end
+
+  local ok, result = pcall(export_config.handoff, {
+    text = text,
+    session = current,
+    repo_root = current and current.repo_root or nil,
+    repo_name = current and current.repo_name or nil,
+  })
+
+  if not ok then
+    notification("handoff failed: " .. tostring(result), vim.log.levels.ERROR)
+    return false
+  end
+
+  if result == false then
+    notification("handoff failed", vim.log.levels.ERROR)
+    return false
+  end
+
+  if export_config.stop_after_handoff ~= false then
+    return M.stop()
+  end
+
+  notification("handoff complete")
+  return true
+end
+
 function M.setup(opts)
   return config.setup(opts)
 end
