@@ -17,10 +17,9 @@ end
 function M.build_text(current)
   local files = annotated_files(current)
   local lines = {
-    "PATCHMARKS REVIEW",
-    string.format("repo: %s", current.repo_name),
-    string.format("files: %d", #files),
-    string.format("notes: %d", current.annotation_count or 0),
+    "PATCHMARKS",
+    string.format("repo %s", current.repo_name),
+    string.format("notes %d", current.annotation_count or 0),
     "",
   }
 

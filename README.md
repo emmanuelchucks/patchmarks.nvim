@@ -57,6 +57,10 @@ require("patchmarks").setup({
     width = 72,
     height = 6,
   },
+  export = {
+    handoff = nil, -- optional function(ctx) return true/false end
+    stop_after_handoff = true,
+  },
 })
 ```
 
@@ -65,6 +69,8 @@ Defaults:
 - `preview.trigger = "manual"`
 - `preview.width = 72`
 - `preview.height = 6`
+- `export.handoff = nil`
+- `export.stop_after_handoff = true`
 
 ## Commands
 
@@ -78,6 +84,8 @@ Defaults:
   Start a fresh round and discard existing annotations.
 - `:PatchmarksExport`
   Export annotations to registers and clipboard when available.
+- `:PatchmarksHandoff`
+  Export annotations and run the configured handoff callback.
 - `:PatchmarksStop`
   Stop Patchmarks UI state but keep the session persisted.
 - `:PatchmarksDiscard`
@@ -98,6 +106,8 @@ Patchmarks session.
   Preview the annotation under the cursor.
 - `<localleader>x`
   Export the current review.
+- `<localleader>X`
+  Hand off the current review.
 - `<localleader>r`
   Refresh the session.
 - `<localleader>R`
@@ -123,6 +133,31 @@ editable file buffers, so you can keep using tools like `gitsigns.nvim`,
 `mini.diff`, or Fugitive for hunk navigation and staging. Patchmarks stays
 inactive in non-file buffers such as quickfix, help, terminal, prompt,
 `nofile`, `acwrite`, and plugin-owned buffers.
+
+## Handoff
+
+`PatchmarksHandoff` exports the current review, passes it to
+`export.handoff(ctx)`, and stops the Patchmarks UI when the callback succeeds.
+The callback receives `ctx.text`, `ctx.session`, `ctx.repo_root`, and
+`ctx.repo_name`.
+
+Example cmux handoff:
+
+```lua
+require("patchmarks").setup({
+  export = {
+    handoff = function(ctx)
+      return require("patchmarks.integrations.cmux").paste_to_other_pane(ctx.text, {
+        submit = true,
+      })
+    end,
+  },
+})
+```
+
+With `submit = true`, the cmux helper writes `.git/patchmarks/handoff.md` and
+submits `patchmarks: .git/patchmarks/handoff.md`. Pass `surface = "surface:N"`
+to target a specific surface.
 
 ## Annotation Editor
 
