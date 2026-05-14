@@ -118,7 +118,10 @@ function M.paste_to_other_pane(text, opts)
 
     local ok, write_err = pcall(vim.fn.writefile, vim.split(text, "\n", { plain = true }), path)
     if not ok or write_err ~= 0 then
-      vim.notify("Patchmarks: failed to write handoff file: " .. tostring(write_err), vim.log.levels.ERROR)
+      vim.notify(
+        "Patchmarks: failed to write handoff file: " .. tostring(write_err),
+        vim.log.levels.ERROR
+      )
       return false
     end
 
