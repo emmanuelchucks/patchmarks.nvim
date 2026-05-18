@@ -132,6 +132,70 @@ return function()
     patchmarks.setup({})
   end
 
+  local function run_cmux_file_handoff_writes_repo_git_dir_test()
+    local repo = setup_repo()
+    local subdir = vim.fs.joinpath(repo, "nested")
+    H.mkdirp(subdir)
+    vim.cmd.cd(repo)
+    edit_alpha(repo)
+
+    T.expect(patchmarks.start() == true, "PatchmarksStart should succeed for cmux file handoff test")
+
+    local fake_root = vim.fn.tempname()
+    local fake_bin = vim.fs.joinpath(fake_root, "bin")
+    local fake_state = vim.fs.joinpath(fake_root, "state")
+    H.mkdirp(fake_bin)
+    H.mkdirp(fake_state)
+    local fake_cmux = vim.fs.joinpath(fake_bin, "cmux")
+    H.write_file(fake_cmux, {
+      "#!/bin/sh",
+      "state=" .. vim.fn.shellescape(fake_state),
+      "if [ \"$1\" = \"--json\" ]; then shift; fi",
+      "cmd=\"$1\"; shift",
+      "case \"$cmd\" in",
+      "  identify) printf '%s\\n' '{\"caller\":{\"workspace_ref\":\"workspace:1\",\"pane_ref\":\"pane:1\"}}' ;;",
+      "  set-buffer) printf '%s' \"$1\" > \"$state/buffer\" ;;",
+      "  paste-buffer) printf '%s' \"$*\" > \"$state/paste\" ;;",
+      "  send-key) printf '%s' \"$*\" > \"$state/send-key\" ;;",
+      "  *) echo unexpected >&2; exit 2 ;;",
+      "esac",
+    })
+    vim.fn.setfperm(fake_cmux, "rwxr-xr-x")
+
+    local old_path = vim.env.PATH
+    vim.env.PATH = fake_bin .. ":" .. old_path
+    vim.cmd.cd(subdir)
+
+    local ok, result = pcall(function()
+      return require("patchmarks.integrations.cmux").paste_to_other_pane("CMUX FILE HANDOFF", {
+        surface = "surface:2",
+        submit = true,
+      })
+    end)
+
+    vim.env.PATH = old_path
+    vim.cmd.cd(repo)
+    T.expect(ok and result == true, "cmux file handoff should succeed from a nested cwd")
+
+    local handoff_path = vim.fs.joinpath(repo, ".git", "patchmarks", "handoff.md")
+    T.expect_eq(
+      table.concat(vim.fn.readfile(handoff_path), "\n"),
+      "CMUX FILE HANDOFF",
+      "cmux file handoff should write to the active repo Git dir"
+    )
+    T.expect(
+      table.concat(vim.fn.readfile(vim.fs.joinpath(fake_state, "buffer")), "\n"):match("patchmarks: "),
+      "cmux file handoff should paste a short pointer"
+    )
+    T.expect_eq(
+      table.concat(vim.fn.readfile(vim.fs.joinpath(fake_state, "send-key")), "\n"),
+      "--workspace workspace:1 --surface surface:2 Enter",
+      "cmux file handoff should submit when requested"
+    )
+
+    vim.fn.delete(fake_root, "rf")
+  end
+
   local function run_editor_append_and_empty_export_test()
     local repo = setup_repo()
     vim.cmd.cd(repo)
@@ -164,6 +228,7 @@ return function()
 
   run_preview_and_export_test()
   run_handoff_test()
+  run_cmux_file_handoff_writes_repo_git_dir_test()
   run_editor_append_and_empty_export_test()
   T.finish()
 end
