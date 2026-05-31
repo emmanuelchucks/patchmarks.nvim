@@ -22,6 +22,23 @@ local function realpath(path)
   return vim.uv.fs_realpath(path) or vim.fs.normalize(path)
 end
 
+local function as_string(value)
+  if value == nil then
+    return ""
+  end
+
+  if type(value) == "string" then
+    return value
+  end
+
+  return vim.fn.string(value)
+end
+
+local function hash_part(value)
+  local text = as_string(value)
+  return (text:gsub("%z", "\n---patchmarks-nul---\n"))
+end
+
 local function is_absolute(path)
   return path:match("^/") ~= nil or path:match("^%a:[/\\]") ~= nil
 end
@@ -90,6 +107,7 @@ local function classify_xy(xy)
 end
 
 local function parse_status_z(output)
+  output = as_string(output)
   local files = {}
   local chunks = vim.split(output, "\0", { plain = true, trimempty = true })
   local i = 1
@@ -144,7 +162,7 @@ local function read_file(path)
 
   local stat = vim.uv.fs_fstat(fd)
   local size = stat and stat.size or 0
-  local content = size > 0 and (vim.uv.fs_read(fd, size, 0) or "") or ""
+  local content = size > 0 and as_string(vim.uv.fs_read(fd, size, 0)) or ""
   vim.uv.fs_close(fd)
   return content
 end
@@ -159,24 +177,24 @@ local function diff_text(repo_root, path)
     return ""
   end
 
-  return result.stdout or ""
+  return as_string(result.stdout)
 end
 
 local function build_change_key(repo_root, files, status_output)
-  local parts = { status_output or "" }
+  local parts = { hash_part(status_output) }
 
   for _, file in ipairs(files) do
-    parts[#parts + 1] = file.path
-    parts[#parts + 1] = file.kind or ""
+    parts[#parts + 1] = hash_part(file.path)
+    parts[#parts + 1] = hash_part(file.kind)
 
     if file.kind == "untracked" then
-      parts[#parts + 1] = read_file(vim.fs.joinpath(repo_root, file.path))
+      parts[#parts + 1] = hash_part(read_file(vim.fs.joinpath(repo_root, file.path)))
     else
-      parts[#parts + 1] = diff_text(repo_root, file.path)
+      parts[#parts + 1] = hash_part(diff_text(repo_root, file.path))
     end
   end
 
-  return vim.fn.sha256(table.concat(parts, "\0"))
+  return vim.fn.sha256(table.concat(parts, "\n---patchmarks-part---\n"))
 end
 
 local function status_result(repo_root)
