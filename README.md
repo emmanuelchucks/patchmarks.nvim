@@ -234,11 +234,18 @@ Tooling:
 - `Selene` for Lua linting
 - `.luarc.json` for LuaLS project diagnostics
 
-If you need the tools locally and already have Rust installed:
+The Makefile first uses `stylua` and `selene` from `$PATH`. If they are not
+available, it falls back to Mason's default bin directory:
+
+```text
+~/.local/share/nvim/mason/bin
+```
+
+With Emmanuel's Neovim config, Mason installs both tools automatically. You can
+still override either binary explicitly when needed:
 
 ```sh
-cargo install --locked stylua
-cargo install selene
+STYLUA=/path/to/stylua SELENE=/path/to/selene make check
 ```
 
 Test layout:

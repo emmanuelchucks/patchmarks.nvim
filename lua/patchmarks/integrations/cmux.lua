@@ -119,7 +119,9 @@ function M.paste_to_other_pane(text, opts)
     if path == nil then
       local repo_root = opts.repo_root or active_repo_root()
       local git_dir_result = repo_root ~= nil
-          and vim.system({ "git", "-C", repo_root, "rev-parse", "--git-dir" }, { text = true }):wait()
+          and vim
+            .system({ "git", "-C", repo_root, "rev-parse", "--git-dir" }, { text = true })
+            :wait()
         or nil
       if git_dir_result ~= nil and git_dir_result.code == 0 then
         local git_dir = vim.trim(git_dir_result.stdout or "")

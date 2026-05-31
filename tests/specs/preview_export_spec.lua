@@ -139,7 +139,10 @@ return function()
     vim.cmd.cd(repo)
     edit_alpha(repo)
 
-    T.expect(patchmarks.start() == true, "PatchmarksStart should succeed for cmux file handoff test")
+    T.expect(
+      patchmarks.start() == true,
+      "PatchmarksStart should succeed for cmux file handoff test"
+    )
 
     local fake_root = vim.fn.tempname()
     local fake_bin = vim.fs.joinpath(fake_root, "bin")
@@ -150,13 +153,13 @@ return function()
     H.write_file(fake_cmux, {
       "#!/bin/sh",
       "state=" .. vim.fn.shellescape(fake_state),
-      "if [ \"$1\" = \"--json\" ]; then shift; fi",
-      "cmd=\"$1\"; shift",
-      "case \"$cmd\" in",
-      "  identify) printf '%s\\n' '{\"caller\":{\"workspace_ref\":\"workspace:1\",\"pane_ref\":\"pane:1\"}}' ;;",
-      "  set-buffer) printf '%s' \"$1\" > \"$state/buffer\" ;;",
-      "  paste-buffer) printf '%s' \"$*\" > \"$state/paste\" ;;",
-      "  send-key) printf '%s' \"$*\" > \"$state/send-key\" ;;",
+      'if [ "$1" = "--json" ]; then shift; fi',
+      'cmd="$1"; shift',
+      'case "$cmd" in',
+      '  identify) printf \'%s\\n\' \'{"caller":{"workspace_ref":"workspace:1","pane_ref":"pane:1"}}\' ;;',
+      '  set-buffer) printf \'%s\' "$1" > "$state/buffer" ;;',
+      '  paste-buffer) printf \'%s\' "$*" > "$state/paste" ;;',
+      '  send-key) printf \'%s\' "$*" > "$state/send-key" ;;',
       "  *) echo unexpected >&2; exit 2 ;;",
       "esac",
     })
@@ -184,7 +187,9 @@ return function()
       "cmux file handoff should write to the active repo Git dir"
     )
     T.expect(
-      table.concat(vim.fn.readfile(vim.fs.joinpath(fake_state, "buffer")), "\n"):match("address review: "),
+      table
+        .concat(vim.fn.readfile(vim.fs.joinpath(fake_state, "buffer")), "\n")
+        :match("address review: "),
       "cmux file handoff should paste an actionable short pointer"
     )
     T.expect_eq(
