@@ -156,7 +156,7 @@ require("patchmarks").setup({
 ```
 
 With `submit = true`, the cmux helper writes `.git/patchmarks/handoff.md` and
-submits `patchmarks: .git/patchmarks/handoff.md`. Pass `surface = "surface:N"`
+submits `address review: .git/patchmarks/handoff.md`. Pass `surface = "surface:N"`
 to target a specific surface.
 
 ## Annotation Editor

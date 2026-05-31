@@ -184,8 +184,8 @@ return function()
       "cmux file handoff should write to the active repo Git dir"
     )
     T.expect(
-      table.concat(vim.fn.readfile(vim.fs.joinpath(fake_state, "buffer")), "\n"):match("patchmarks: "),
-      "cmux file handoff should paste a short pointer"
+      table.concat(vim.fn.readfile(vim.fs.joinpath(fake_state, "buffer")), "\n"):match("address review: "),
+      "cmux file handoff should paste an actionable short pointer"
     )
     T.expect_eq(
       table.concat(vim.fn.readfile(vim.fs.joinpath(fake_state, "send-key")), "\n"),

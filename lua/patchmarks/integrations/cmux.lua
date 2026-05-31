@@ -153,7 +153,7 @@ function M.paste_to_other_pane(text, opts)
       return false
     end
 
-    paste_text = opts.message or string.format("patchmarks: %s", display_path or path)
+    paste_text = opts.message or string.format("address review: %s", display_path or path)
   end
 
   local _, set_err = system({ "cmux", "set-buffer", paste_text })
