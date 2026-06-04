@@ -1,3 +1,5 @@
+local handoff_file = require("patchmarks.integrations.handoff")
+
 local M = {}
 
 local function system(args)
@@ -16,23 +18,6 @@ local function decode_json(output)
     return nil, "invalid cmux JSON output"
   end
   return decoded
-end
-
-local function active_repo_root()
-  local ok, session = pcall(require, "patchmarks.session")
-  if ok then
-    local current = session.get()
-    if current ~= nil and current.repo_root ~= nil then
-      return current.repo_root
-    end
-  end
-
-  local result = vim.system({ "git", "rev-parse", "--show-toplevel" }, { text = true }):wait()
-  if result.code == 0 then
-    return vim.trim(result.stdout or "")
-  end
-
-  return nil
 end
 
 local function selected_surface_for_other_pane(workspace_ref, current_pane_ref)
@@ -114,48 +99,21 @@ function M.paste_to_other_pane(text, opts)
 
   local delivery = opts.delivery or (opts.submit == true and "file" or "paste")
   if delivery == "file" then
-    local path = opts.path
-    local display_path = opts.display_path
-    if path == nil then
-      local repo_root = opts.repo_root or active_repo_root()
-      local git_dir_result = repo_root ~= nil
-          and vim
-            .system({ "git", "-C", repo_root, "rev-parse", "--git-dir" }, { text = true })
-            :wait()
-        or nil
-      if git_dir_result ~= nil and git_dir_result.code == 0 then
-        local git_dir = vim.trim(git_dir_result.stdout or "")
-        if not vim.startswith(git_dir, "/") then
-          git_dir = vim.fs.joinpath(repo_root, git_dir)
-        end
-        local dir = vim.fs.joinpath(git_dir, "patchmarks")
-        vim.fn.mkdir(dir, "p")
-        path = vim.fs.joinpath(dir, "handoff.md")
-        if display_path == nil then
-          local cwd = vim.uv.fs_realpath(vim.fn.getcwd()) or vim.fs.normalize(vim.fn.getcwd())
-          local real_repo_root = vim.uv.fs_realpath(repo_root) or vim.fs.normalize(repo_root)
-          if cwd == real_repo_root and vim.trim(git_dir_result.stdout or "") == ".git" then
-            display_path = ".git/patchmarks/handoff.md"
-          else
-            display_path = path
-          end
-        end
-      else
-        path = vim.fn.tempname() .. ".md"
-        display_path = display_path or path
-      end
-    end
-
-    local ok, write_err = pcall(vim.fn.writefile, vim.split(text, "\n", { plain = true }), path)
-    if not ok or write_err ~= 0 then
-      vim.notify(
-        "Patchmarks: failed to write handoff file: " .. tostring(write_err),
-        vim.log.levels.ERROR
-      )
+    local written
+    written, err = handoff_file.write_file(text, {
+      path = opts.path,
+      display_path = opts.display_path,
+      repo_root = opts.repo_root,
+    })
+    if written == nil then
+      vim.notify("Patchmarks: failed to write handoff file: " .. err, vim.log.levels.ERROR)
       return false
     end
 
-    paste_text = opts.message or string.format("address review: %s", display_path or path)
+    paste_text = opts.message or string.format("address review: %s", written.display_path)
+  elseif delivery ~= "paste" then
+    vim.notify("Patchmarks: invalid cmux delivery: " .. tostring(delivery), vim.log.levels.ERROR)
+    return false
   end
 
   local _, set_err = system({ "cmux", "set-buffer", paste_text })

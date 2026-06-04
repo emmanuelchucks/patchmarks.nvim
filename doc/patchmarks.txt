@@ -157,6 +157,24 @@ Defaults:
 - `export.handoff = nil`
 - `export.stop_after_handoff = true`
 
+Example tmux handoff to the previously-current window: >lua
+  require("patchmarks").setup({
+    export = {
+      handoff = function(ctx)
+        return require("patchmarks.integrations.tmux").paste_to_pane(ctx.text, {
+          target = "{last}",
+          submit = true,
+          focus = true,
+          repo_root = ctx.repo_root,
+        })
+      end,
+    },
+  })
+<
+With `submit = true`, the tmux helper writes `.git/patchmarks/handoff.md`,
+pastes `address review: .git/patchmarks/handoff.md` into the target pane, and
+sends Enter. `focus = true` switches to the target window/pane after handoff.
+
 ==============================================================================
 7. Notes                                                    *patchmarks-notes*
 

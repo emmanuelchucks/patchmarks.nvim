@@ -141,6 +141,28 @@ inactive in non-file buffers such as quickfix, help, terminal, prompt,
 The callback receives `ctx.text`, `ctx.session`, `ctx.repo_root`, and
 `ctx.repo_name`.
 
+Example tmux handoff for a review window opened from an agent window:
+
+```lua
+require("patchmarks").setup({
+  export = {
+    handoff = function(ctx)
+      return require("patchmarks.integrations.tmux").paste_to_pane(ctx.text, {
+        target = "{last}", -- previously current tmux window
+        submit = true,
+        focus = true,
+        repo_root = ctx.repo_root,
+      })
+    end,
+  },
+})
+```
+
+With `submit = true`, the tmux helper writes `.git/patchmarks/handoff.md`, pastes
+`address review: .git/patchmarks/handoff.md` into the target pane, sends Enter,
+and can switch focus to the target. Pass any tmux target accepted by `-t` via
+`target`.
+
 Example cmux handoff:
 
 ```lua

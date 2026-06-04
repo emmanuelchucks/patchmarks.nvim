@@ -201,6 +201,113 @@ return function()
     vim.fn.delete(fake_root, "rf")
   end
 
+  local function run_tmux_file_handoff_targets_last_window_test()
+    local repo = setup_repo()
+    local subdir = vim.fs.joinpath(repo, "nested")
+    H.mkdirp(subdir)
+    vim.cmd.cd(repo)
+    edit_alpha(repo)
+
+    T.expect(
+      patchmarks.start() == true,
+      "PatchmarksStart should succeed for tmux file handoff test"
+    )
+
+    local fake_root = vim.fn.tempname()
+    local fake_bin = vim.fs.joinpath(fake_root, "bin")
+    local fake_state = vim.fs.joinpath(fake_root, "state")
+    H.mkdirp(fake_bin)
+    H.mkdirp(fake_state)
+    local fake_tmux = vim.fs.joinpath(fake_bin, "tmux")
+    H.write_file(fake_tmux, {
+      "#!/bin/sh",
+      "state=" .. vim.fn.shellescape(fake_state),
+      'cmd="$1"; shift',
+      'case "$cmd" in',
+      "  display-message) printf '%s' \"$*\" > \"$state/display\"; printf '%s\\n' '%2' ;;",
+      "  load-buffer)",
+      "    buffer=",
+      "    while [ $# -gt 0 ]; do",
+      '      if [ "$1" = "-b" ]; then shift; buffer="$1"; fi',
+      '      if [ "$1" = "-" ]; then cat > "$state/buffer"; break; fi',
+      "      shift",
+      "    done",
+      '    printf \'%s\' "$buffer" > "$state/buffer-name"',
+      "    ;;",
+      '  paste-buffer) printf \'%s\' "$*" > "$state/paste" ;;',
+      '  send-keys) printf \'%s\' "$*" > "$state/send-key" ;;',
+      '  select-window) printf \'%s\' "$*" > "$state/select-window" ;;',
+      '  select-pane) printf \'%s\' "$*" > "$state/select-pane" ;;',
+      "  *) echo unexpected >&2; exit 2 ;;",
+      "esac",
+    })
+    vim.fn.setfperm(fake_tmux, "rwxr-xr-x")
+
+    local old_path = vim.env.PATH
+    local old_tmux = vim.env.TMUX
+    vim.env.PATH = fake_bin .. ":" .. old_path
+    vim.env.TMUX = "/tmp/fake-tmux,1,1"
+    vim.cmd.cd(subdir)
+
+    local ok, result = pcall(function()
+      return require("patchmarks.integrations.tmux").paste_to_pane("TMUX FILE HANDOFF", {
+        target = "{last}",
+        submit = true,
+        focus = true,
+      })
+    end)
+
+    vim.env.PATH = old_path
+    vim.env.TMUX = old_tmux
+    vim.cmd.cd(repo)
+    T.expect(ok and result == true, "tmux file handoff should succeed from a nested cwd")
+
+    local handoff_path = vim.fs.joinpath(repo, ".git", "patchmarks", "handoff.md")
+    T.expect_eq(
+      table.concat(vim.fn.readfile(handoff_path), "\n"),
+      "TMUX FILE HANDOFF",
+      "tmux file handoff should write to the active repo Git dir"
+    )
+    T.expect(
+      table
+        .concat(vim.fn.readfile(vim.fs.joinpath(fake_state, "buffer")), "\n")
+        :match("address review: "),
+      "tmux file handoff should paste an actionable short pointer"
+    )
+    T.expect_eq(
+      table.concat(vim.fn.readfile(vim.fs.joinpath(fake_state, "display")), "\n"),
+      "-p -t {last} #{pane_id}",
+      "tmux file handoff should resolve the configured last-window target"
+    )
+    T.expect_eq(
+      table.concat(vim.fn.readfile(vim.fs.joinpath(fake_state, "buffer-name")), "\n"),
+      "patchmarks-handoff",
+      "tmux file handoff should use a named tmux buffer"
+    )
+    T.expect_eq(
+      table.concat(vim.fn.readfile(vim.fs.joinpath(fake_state, "paste")), "\n"),
+      "-p -d -b patchmarks-handoff -t %2",
+      "tmux file handoff should paste to the resolved pane"
+    )
+    T.expect_eq(
+      table.concat(vim.fn.readfile(vim.fs.joinpath(fake_state, "send-key")), "\n"),
+      "-t %2 Enter",
+      "tmux file handoff should submit when requested"
+    )
+    T.expect_eq(
+      table.concat(vim.fn.readfile(vim.fs.joinpath(fake_state, "select-window")), "\n"),
+      "-t %2",
+      "tmux file handoff should switch to the target window when requested"
+    )
+    T.expect_eq(
+      table.concat(vim.fn.readfile(vim.fs.joinpath(fake_state, "select-pane")), "\n"),
+      "-t %2",
+      "tmux file handoff should focus the target pane when requested"
+    )
+
+    vim.fn.delete(fake_root, "rf")
+  end
+
   local function run_editor_append_and_empty_export_test()
     local repo = setup_repo()
     vim.cmd.cd(repo)
@@ -234,6 +341,7 @@ return function()
   run_preview_and_export_test()
   run_handoff_test()
   run_cmux_file_handoff_writes_repo_git_dir_test()
+  run_tmux_file_handoff_targets_last_window_test()
   run_editor_append_and_empty_export_test()
   T.finish()
 end
